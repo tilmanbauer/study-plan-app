@@ -1,0 +1,388 @@
+:root {
+    --primary: #005f73;
+    --primary-light: #0a9396;
+    --danger: #9b2226;
+    --success: #2a9d8f;
+    --bg: #f4f4f4;
+    --card: #ffffff;
+    --text: #333333;
+    --muted: #777777;
+    --border: #dddddd;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+header {
+    background: var(--primary);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+main {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+h2, h3 {
+    margin-top: 0;
+}
+
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+button:hover {
+    background: var(--primary-light);
+}
+
+button.secondary {
+    background: var(--muted);
+}
+
+button.success {
+    background: var(--success);
+}
+
+button.danger {
+    background: var(--danger);
+}
+
+button:disabled,
+button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+
+th, td {
+    text-align: left;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 3fr 1fr auto;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: end;
+}
+
+label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
+
+.actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.status.draft { background: #e0e0e0; color: #555; }
+.status.pending { background: #fff3cd; color: #856404; }
+.status.approved { background: #d4edda; color: #155724; }
+.status.rejected { background: #f8d7da; color: #721c24; }
+.status.changes_requested { background: #d1ecf1; color: #0c5460; }
+
+.comment {
+    border-left: 3px solid var(--primary);
+    padding-left: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.comment-meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+}
+
+.version-selector {
+    margin-bottom: 1rem;
+}
+
+.version-btn {
+    margin-right: 0.25rem;
+}
+
+.version-btn.active {
+    background: var(--primary-light);
+}
+
+.diff-summary {
+    background: #eef;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.demo-table {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.demo-table th,
+.demo-table td {
+    padding: 0.4rem;
+}
+
+.demo-hint {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.field {
+    margin-bottom: 1rem;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.field select,
+.field input {
+    max-width: 320px;
+}
+
+.term-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.term-card.readonly {
+    padding-bottom: 1rem;
+}
+
+.term-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--bg);
+}
+
+.term-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+.progress-bar {
+    position: relative;
+    width: 160px;
+    height: 20px;
+    background: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid #ccc;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    transition: width 0.3s ease, background 0.3s ease;
+}
+
+.progress-fill.warning {
+    background: #f4a3a3;
+}
+
+.progress-fill.ok {
+    background: var(--success);
+}
+
+.progress-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #222;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.term-body {
+    min-height: 60px;
+}
+
+.course-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.course-row select {
+    flex: 2 1 200px;
+    min-width: 0;
+}
+
+.course-row .credits-field {
+    flex: 0 0 90px;
+}
+
+.course-row .credits-field input {
+    width: 100%;
+}
+
+.course-row .remove-btn {
+    flex: 0 0 auto;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.course-row .custom-fields {
+    flex: 1 1 100%;
+    display: none;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.course-row .custom-fields input {
+    flex: 1 1 120px;
+}
+
+.empty-term-hint {
+    color: var(--muted);
+    font-style: italic;
+    padding: 1.25rem;
+    text-align: center;
+    background: var(--bg);
+    border-radius: 6px;
+}
+
+.add-course-btn {
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.6rem;
+    background: transparent;
+    border: 2px dashed var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+}
+
+.add-course-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #f0f9fa;
+}
+
+.total-progress {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--bg);
+    border-radius: 8px;
+}
+
+.total-progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.total-progress-bar {
+    height: 16px;
+    background: #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+}
+
+.total-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    transition: width 0.3s ease;
+}
+
+.total-progress-fill.warning {
+    background: #f4a3a3;
+}
+
+.total-progress-fill.ok {
+    background: var(--success);
+}
