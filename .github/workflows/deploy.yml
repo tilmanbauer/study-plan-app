@@ -1,0 +1,42 @@
+name: Deploy to KTH Cloud
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to KTH Cloud registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cloud.cbh.kth.se
+          username: ${{ secrets.KTHCLOUD_USERNAME }}
+          password: ${{ secrets.KTHCLOUD_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: registry.cloud.cbh.kth.se/${{ secrets.KTHCLOUD_NAMESPACE }}/${{ secrets.KTHCLOUD_APP_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Restart KTH Cloud deployment
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: "https://cloud.cbh.kth.se/api/v1/deployments/${{ secrets.KTHCLOUD_APP_NAME }}/restart"
+          method: "POST"
+          username: ${{ secrets.KTHCLOUD_USERNAME }}
+          password: ${{ secrets.KTHCLOUD_PASSWORD }}
+          ignoreStatusCodes: "502"
