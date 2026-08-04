@@ -102,20 +102,15 @@ function renderLogin() {
     document.getElementById('main').innerHTML = `
         <div class="card" id="login-form">
             <h2>Sign in</h2>
-            <p class="demo-hint">Demo accounts:</p>
-            <table class="demo-table">
-                <thead><tr><th>Role</th><th>Email</th><th>Password</th></tr></thead>
-                <tbody>
-                    <tr><td>Student</td><td>student@university.edu</td><td>student</td></tr>
-                    <tr><td>Director</td><td>director@university.edu</td><td>director</td></tr>
-                </tbody>
-            </table>
-            <input id="email" placeholder="Email" style="margin-bottom:0.5rem"><br>
-            <input id="password" type="password" placeholder="Password" style="margin-bottom:0.5rem"><br>
-            <button onclick="login()">Sign in</button>
+            <p class="demo-hint">Sign in with your KTH account to access your study plan.</p>
+            <button onclick="loginWithKTH()">Sign in with KTH</button>
             <div id="login-error" style="color:var(--danger);margin-top:0.5rem"></div>
         </div>
     `;
+}
+
+function loginWithKTH() {
+    window.location.href = '/auth/oidc/login';
 }
 
 async function login() {
