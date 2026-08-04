@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,7 +34,10 @@ app.include_router(oidc_router)
 def root():
     return FileResponse("static/index.html")
 
-
+@app.get("/healthz")
+def healthz():
+    return Response(status_code=200)
+    
 scheduler = BackgroundScheduler()
 scheduler.add_job(send_director_daily_summary, "cron", hour=8, minute=0)
 scheduler.start()
