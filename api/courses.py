@@ -5,7 +5,7 @@ import csv
 import io
 
 from database import get_db
-from models import Course, Plan, User
+from models import Course, User
 from schemas import CourseCreate, CourseOut
 from auth import require_role
 
