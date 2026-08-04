@@ -1,4 +1,5 @@
 import logging
+from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
