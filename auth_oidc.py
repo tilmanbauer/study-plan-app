@@ -1,26 +1,30 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from authlib.integrations.starlette_client import OAuth
-import os
 
+from authlib.integrations.starlette_client import OAuth
+
+from config import (
+    OIDC_CLIENT_ID,
+    OIDC_CLIENT_SECRET,
+    OIDC_DISCOVERY_URL,
+    OIDC_REDIRECT_URI,
+)
 from database import get_db
 from models import User
 from auth import create_access_token
-from config import OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_DISCOVERY_URL, OIDC_REDIRECT_URI
-
-# Use these values when constructing the OIDC client and callback
 
 router = APIRouter(prefix="/auth/oidc", tags=["auth"])
 
 oauth = OAuth()
 
-if os.environ.get("OIDC_DISCOVERY_URL"):
+if OIDC_DISCOVERY_URL and OIDC_CLIENT_ID and OIDC_CLIENT_SECRET:
     oauth.register(
         name="university",
-        client_id=os.environ.get("OIDC_CLIENT_ID"),
-        client_secret=os.environ.get("OIDC_CLIENT_SECRET"),
-        server_metadata_url=os.environ.get("OIDC_DISCOVERY_URL"),
+        client_id=OIDC_CLIENT_ID,
+        client_secret=OIDC_CLIENT_SECRET,
+        server_metadata_url=OIDC_DISCOVERY_URL,
         client_kwargs={"scope": "openid email profile"},
+        redirect_uri=OIDC_REDIRECT_URI,
     )
 
 
@@ -32,7 +36,7 @@ def _ensure_oidc_configured() -> None:
 @router.get("/login")
 async def oidc_login(request: Request):
     _ensure_oidc_configured()
-    redirect_uri = str(request.url_for("oidc_callback"))
+    redirect_uri = OIDC_REDIRECT_URI or str(request.url_for("oidc_callback"))
     return await oauth.university.authorize_redirect(request, redirect_uri)
 
 
