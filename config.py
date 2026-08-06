@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////app/studyplan.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////data/studyplan.db")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 
 OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID")
