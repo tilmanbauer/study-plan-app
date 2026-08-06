@@ -1,6 +1,11 @@
 import logging
-from typing import List
+import os
+import smtplib
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import List
+
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
@@ -8,19 +13,48 @@ from models import NotificationEvent, User
 
 logger = logging.getLogger(__name__)
 
-
-def send_email(to: str, subject: str, body: str) -> None:
-    """Log email to console. Replace with real SMTP later."""
-    print("\n" + "=" * 60)
-    print(f"EMAIL TO: {to}")
-    print(f"SUBJECT: {subject}")
-    print("-" * 60)
-    print(body)
-    print("=" * 60 + "\n")
-    logger.info(f"Email logged for {to}: {subject}")
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "")
+SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
 
 
-def notify_student(student_email: str, plan_title: str, event_type: str, comment: str = None) -> None:
+def _send_email(to: str, subject: str, body: str) -> None:
+    if not SMTP_HOST or not SMTP_FROM:
+        print("\n" + "=" * 60)
+        print(f"EMAIL TO: {to}")
+        print(f"SUBJECT: {subject}")
+        print("-" * 60)
+        print(body)
+        print("=" * 60 + "\n")
+        logger.info(f"Email logged for {to}: {subject}")
+        return
+
+    msg = MIMEMultipart()
+    msg["From"] = SMTP_FROM
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.ehlo()
+            if SMTP_TLS:
+                server.starttls()
+                server.ehlo()
+            if SMTP_USER and SMTP_PASSWORD:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, [to], msg.as_string())
+        logger.info(f"Email sent to {to}: {subject}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {to}: {e}")
+        raise
+
+
+def notify_student(student_email: str, plan_title: str, event_type: str,
+                   comment: str = None) -> None:
     subjects = {
         "approved": "Your study plan has been approved",
         "rejected": "Your study plan has been rejected",
@@ -38,7 +72,7 @@ def notify_student(student_email: str, plan_title: str, event_type: str, comment
     if comment:
         body += f"\n\nComment from director:\n{comment}"
 
-    send_email(student_email, subject, body)
+    _send_email(student_email, subject, body)
 
 
 def queue_director_notification(
@@ -114,7 +148,7 @@ def send_director_daily_summary() -> None:
 
         for director in directors:
             body = f"Hello {director.name},\n\nHere is the daily summary of study plan activity:\n\n{summary}\n\nPlease log in to review."
-            send_email(director.email, subject, body)
+            _send_email(director.email, subject, body)
 
         for event in events:
             event.sent_at = datetime.utcnow()
