@@ -9,4 +9,15 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
 OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID")
 OIDC_CLIENT_SECRET = os.getenv("OIDC_CLIENT_SECRET")
 OIDC_DISCOVERY_URL = os.getenv("OIDC_DISCOVERY_URL")
-OIDC_REDIRECT_URI = os.getenv("OIDC_REDIRECT_URI")
+OIDC_REDIRECT_URI = os.getenv(
+    "OIDC_REDIRECT_URI",
+    "https://study-planner-math.app.cloud.cbh.kth.se/auth/oidc/callback",
+)
+ENABLE_TEST_LOGIN = os.getenv("ENABLE_TEST_LOGIN", "false").lower() == "true"
+
+# Comma-separated list of director email addresses
+DIRECTOR_EMAILS = [
+    email.strip()
+    for email in os.getenv("DIRECTOR_EMAILS", "").split(",")
+    if email.strip()
+]

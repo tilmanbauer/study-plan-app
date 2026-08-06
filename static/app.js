@@ -97,17 +97,72 @@ async function init() {
     }
 }
 
+let testAccounts = [];
+
+async function loadLoginOptions() {
+    try {
+        const res = await fetch('/auth/test-login-enabled');
+        const data = await res.json();
+        if (data.enabled) {
+            testAccounts = [
+                { email: 'student1@example.com', name: 'Test Student 1', role: 'student' },
+                { email: 'student2@example.com', name: 'Test Student 2', role: 'student' },
+                { email: 'student3@example.com', name: 'Test Student 3', role: 'student' },
+                { email: 'director@example.com', name: 'Test Director', role: 'director' },
+            ];
+        }
+    } catch (e) {
+        testAccounts = [];
+    }
+    renderApp();
+}
+
 function renderLogin() {
+    const testButtons = testAccounts.map(acc => `
+        <button class="secondary" onclick="loginAsTest('${acc.email}')">
+            ${acc.name} (${acc.role})
+        </button>
+    `).join('');
+
     document.getElementById('user-bar').innerHTML = '';
     document.getElementById('main').innerHTML = `
         <div class="card" id="login-form">
             <h2>Sign in</h2>
-            <p class="demo-hint">Sign in with your KTH account to access your study plan.</p>
             <button onclick="loginWithKTH()">Sign in with KTH</button>
+            ${testAccounts.length ? `
+                <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+                <p class="demo-hint">Test accounts (development only):</p>
+                <div style="display:flex;flex-direction:column;gap:0.5rem">
+                    ${testButtons}
+                </div>
+            ` : ''}
             <div id="login-error" style="color:var(--danger);margin-top:0.5rem"></div>
         </div>
     `;
 }
+
+function loginWithKTH() {
+    window.location.href = '/auth/oidc/login';
+}
+
+async function loginAsTest(email) {
+    try {
+        const res = await fetch('/auth/test-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        if (!res.ok) throw new Error('Test login failed');
+        const data = await res.json();
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
+        renderApp();
+    } catch (e) {
+        document.getElementById('login-error').textContent = e.message;
+    }
+}
+
 
 function loginWithKTH() {
     window.location.href = '/auth/oidc/login';

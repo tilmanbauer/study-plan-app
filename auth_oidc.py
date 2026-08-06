@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
+from config import DIRECTOR_EMAILS
 
 from authlib.integrations.starlette_client import OAuth
 
@@ -56,10 +57,11 @@ async def oidc_callback(request: Request, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        role = "director" if email in DIRECTOR_EMAILS else "student"
         user = User(
             email=email,
             name=userinfo.get("name", email),
-            role="student",
+            role=role,
         )
         db.add(user)
         db.commit()
