@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from database import get_db
 from models import User
 from schemas import UserOut
-from auth import get_current_user
+from auth import get_current_user, create_access_token
 from config import ENABLE_TEST_LOGIN
 
 router = APIRouter(prefix="/auth", tags=["auth"])
