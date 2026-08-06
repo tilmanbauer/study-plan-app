@@ -83,7 +83,7 @@ async function api(path, options = {}) {
 
 async function init() {
     if (!getToken()) {
-        renderLogin();
+        loadLoginOptions();
         return;
     }
     try {
@@ -93,9 +93,10 @@ async function init() {
     } catch (e) {
         console.error('init failed:', e);
         clearToken();
-        renderLogin();
+        loadLoginOptions();
     }
 }
+
 
 let testAccounts = [];
 
@@ -112,10 +113,12 @@ async function loadLoginOptions() {
             ];
         }
     } catch (e) {
+        console.error('Failed to load test login options:', e);
         testAccounts = [];
     }
-    renderApp();
+    renderLogin();
 }
+
 
 function renderLogin() {
     const testButtons = testAccounts.map(acc => `
@@ -163,35 +166,6 @@ async function loginAsTest(email) {
     }
 }
 
-
-function loginWithKTH() {
-    window.location.href = '/auth/oidc/login';
-}
-
-async function login() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-
-    const form = new URLSearchParams();
-    form.append('username', email);
-    form.append('password', password);
-
-    try {
-        const res = await fetch(`${API}/token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: form,
-        });
-        if (!res.ok) throw new Error('Invalid credentials');
-        const data = await res.json();
-        setToken(data.access_token);
-        currentUser = data.user;
-        courses = await api('/courses');
-        renderApp();
-    } catch (e) {
-        document.getElementById('login-error').textContent = e.message;
-    }
-}
 
 function logout() {
     clearToken();
