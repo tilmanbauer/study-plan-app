@@ -13,11 +13,11 @@ OIDC_REDIRECT_URI = os.getenv(
     "OIDC_REDIRECT_URI",
     "https://study-planner-math.app.cloud.cbh.kth.se/auth/oidc/callback",
 )
-ENABLE_TEST_LOGIN = os.getenv("ENABLE_TEST_LOGIN", "false").lower() == "true"
 
-# Comma-separated list of director email addresses
 DIRECTOR_EMAILS = [
     email.strip()
     for email in os.getenv("DIRECTOR_EMAILS", "").split(",")
     if email.strip()
 ]
+
+ENABLE_TEST_LOGIN = os.getenv("ENABLE_TEST_LOGIN", "false").lower() == "true"

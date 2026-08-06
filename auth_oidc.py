@@ -1,18 +1,17 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from config import DIRECTOR_EMAILS
-
 from authlib.integrations.starlette_client import OAuth
 
+from database import get_db
+from models import User
+from auth import create_access_token
 from config import (
     OIDC_CLIENT_ID,
     OIDC_CLIENT_SECRET,
     OIDC_DISCOVERY_URL,
     OIDC_REDIRECT_URI,
+    DIRECTOR_EMAILS,
 )
-from database import get_db
-from models import User
-from auth import create_access_token
 
 router = APIRouter(prefix="/auth/oidc", tags=["auth"])
 
@@ -25,7 +24,6 @@ if OIDC_DISCOVERY_URL and OIDC_CLIENT_ID and OIDC_CLIENT_SECRET:
         client_secret=OIDC_CLIENT_SECRET,
         server_metadata_url=OIDC_DISCOVERY_URL,
         client_kwargs={"scope": "openid email profile"},
-        redirect_uri=OIDC_REDIRECT_URI,
     )
 
 
@@ -55,17 +53,18 @@ async def oidc_callback(request: Request, db: Session = Depends(get_db)):
     if not email:
         raise HTTPException(status_code=400, detail="OIDC email missing")
 
+    role = "director" if email in DIRECTOR_EMAILS else "student"
+    name = userinfo.get("name", email)
+
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        role = "director" if email in DIRECTOR_EMAILS else "student"
-        user = User(
-            email=email,
-            name=userinfo.get("name", email),
-            role=role,
-        )
+        user = User(email=email, name=name, role=role)
         db.add(user)
-        db.commit()
-        db.refresh(user)
+    else:
+        user.name = name
+        user.role = role
+    db.commit()
+    db.refresh(user)
 
     access_token = create_access_token({"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer", "user": user}
