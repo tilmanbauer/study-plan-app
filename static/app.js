@@ -803,13 +803,27 @@ async function saveDirectorFlags(userId) {
     alert('Student status saved');
 }
 
+aasync function loadDirectorFlags(userId) {
+    const user = await api(`/auth/users/${userId}/director-flags`);
+    const tuitionBox = document.getElementById('tuition-paying');
+    const registrationBox = document.getElementById('registration-complete');
+    if (tuitionBox) tuitionBox.checked = user.tuition_paying;
+    if (registrationBox) registrationBox.checked = user.registration_complete;
+}
+
+
+
 async function viewPlan(planId, versionNumber) {
     const plan = await api(`/plans/${planId}`);
     versionNumber = versionNumber || plan.current_version;
     const version = await api(`/plans/${planId}/versions/${versionNumber}`);
     const isLatest = versionNumber === plan.current_version;
     renderPlanView(plan, version, isLatest);
+    if (currentUser.role === 'director' && plan.student) {
+        loadDirectorFlags(plan.student.id);
+    }
 }
+
 
 async function renderStudent() {
     const plans = await api('/plans');

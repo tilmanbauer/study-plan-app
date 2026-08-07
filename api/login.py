@@ -103,6 +103,16 @@ def update_profile(
     db.refresh(current_user)
     return current_user
 
+@router.get("/users/{user_id}/director-flags", response_model=UserOut)
+def get_director_flags(
+    user_id: int,
+    current_user: User = Depends(require_director),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 @router.patch("/users/{user_id}/director-flags", response_model=UserOut)
 def update_director_flags(
