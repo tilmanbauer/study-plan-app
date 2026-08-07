@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas import UserOut
-from auth import get_current_user, create_access_token, require_director, validate_personal_number
+from auth import get_current_user, create_access_token, require_director, require_role, validate_personal_number
 from config import ENABLE_TEST_LOGIN
 
 router = APIRouter(prefix="/auth", tags=["auth"])
