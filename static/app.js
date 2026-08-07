@@ -113,28 +113,33 @@ async function init() {
 }
 
 function renderProfileCompletion(missing) {
-    document.getElementById('user-bar').innerHTML = '';
+    const missingList = missing.map(m => `<li>${m}</li>`).join('');
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>Complete your profile</h2>
-            <p>Please provide the following information before creating your study plan.</p>
-            <div class="field">
+            <p>Please fill in the following required information before continuing:</p>
+            <ul>${missingList}</ul>
+            <div class="form-row">
                 <label>First name</label>
-                <input id="first-name" type="text">
+                <input type="text" id="first-name" placeholder="First name">
             </div>
-            <div class="field">
+            <div class="form-row">
                 <label>Last name</label>
-                <input id="last-name" type="text">
+                <input type="text" id="last-name" placeholder="Last name">
             </div>
-            <div class="field">
-                <label>Personal number (YYYYMMDD-XXXX)</label>
-                <input id="personal-number" type="text">
+            <div class="form-row">
+                <label>Personal number</label>
+                <input type="text" id="personal-number" placeholder="YYYYMMDD-XXXX">
             </div>
-            <button onclick="submitProfile()">Save</button>
-            <div id="profile-error" style="color:var(--danger);margin-top:0.5rem"></div>
+            <div id="profile-error" class="error"></div>
+            <div class="actions">
+                <button onclick="submitProfile()">Save</button>
+                <button onclick="clearToken(); loadLoginOptions();">Cancel / Log out</button>
+            </div>
         </div>
     `;
 }
+
 
 async function submitProfile() {
     const first_name = document.getElementById('first-name').value.trim();
@@ -919,6 +924,14 @@ async function renderDirector() {
         </tr>
     `).join('');
 
+    const terms = new Set();
+    plans.forEach(p => {
+        if (p.admission_term) {
+            getPlanTerms(p.admission_term).forEach(t => terms.add(t));
+        }
+    });
+    const termOptions = Array.from(terms).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>All Study Plans</h2>
@@ -930,7 +943,48 @@ async function renderDirector() {
                 <button onclick="renderCourseAdmin()">Manage Courses</button>
             </div>
         </div>
+        <div class="card">
+            <h2>Export Registrations</h2>
+            <div class="form-row">
+                <select id="export-term">
+                    <option value="">-- select term --</option>
+                    ${termOptions || '<option value="">No terms available</option>'}
+                </select>
+                <button onclick="exportSelectedTerm()">Download CSV</button>
+            </div>
+        </div>
     `;
+}
+
+
+async function exportTermCsv(term) {
+    const token = getToken();
+    const res = await fetch(`${API}/plans/export/${encodeURIComponent(term)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Export failed' }));
+        alert(err.detail || 'Export failed');
+        return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `registrations_${term.replace(' ', '_')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function exportSelectedTerm() {
+    const term = document.getElementById('export-term').value;
+    if (!term) {
+        alert('Please select a term.');
+        return;
+    }
+    exportTermCsv(term);
 }
 
 async function renderCourseAdmin() {

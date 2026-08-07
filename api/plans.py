@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -16,6 +16,8 @@ from schemas import (
 )
 from auth import get_current_user, require_role
 from email_service import notify_student, queue_director_notification
+import csv
+import io
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -290,3 +292,92 @@ def request_changes(
         db.commit()
 
     return {"ok": True}
+
+@router.get("/export/{term}")
+def export_term_csv(
+    term: str,
+    current_user: User = Depends(require_role("director")),
+    db: Session = Depends(get_db),
+):
+    plans = db.query(StudyPlan).all()
+
+    course_codes = set()
+    student_rows = []
+
+    for plan in plans:
+        latest = (
+            db.query(StudyPlanVersion)
+            .filter(StudyPlanVersion.plan_id == plan.id)
+            .order_by(StudyPlanVersion.version_number.desc())
+            .first()
+        )
+        if not latest:
+            continue
+
+        term_items = [
+            i for i in latest.items
+            if i.term == term and (i.course_id or i.custom_code)
+        ]
+        if not term_items:
+            continue
+
+        student = plan.student
+        student_course_codes = set()
+
+        for item in term_items:
+            if item.course_id and item.course:
+                student_course_codes.add(item.course.code)
+            elif item.custom_code:
+                student_course_codes.add(item.custom_code)
+
+        course_codes.update(student_course_codes)
+
+        admission_year = ""
+        if plan.admission_term:
+            parts = plan.admission_term.split()
+            if parts:
+                admission_year = parts[-1]
+
+        student_rows.append({
+            "personal_number": student.personal_number or "",
+            "last_name": student.last_name or "",
+            "first_name": student.first_name or "",
+            "admission_year": admission_year,
+            "tuition_paying": "yes" if student.tuition_paying else "no",
+            "registration_complete": "yes" if student.registration_complete else "no",
+            "courses": student_course_codes,
+        })
+
+    sorted_codes = sorted(course_codes)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    header = [
+        "Personal number",
+        "Last name",
+        "First name",
+        "Admission year",
+        "Tuition paying",
+        "Admission complete",
+    ] + sorted_codes
+    writer.writerow(header)
+
+    for row in student_rows:
+        csv_row = [
+            row["personal_number"],
+            row["last_name"],
+            row["first_name"],
+            row["admission_year"],
+            row["tuition_paying"],
+            row["registration_complete"],
+        ] + ["X" if code in row["courses"] else "" for code in sorted_codes]
+        writer.writerow(csv_row)
+
+    filename = f"registrations_{term.replace(' ', '_')}.csv"
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
