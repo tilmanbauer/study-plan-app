@@ -734,11 +734,14 @@ function renderPlanView(plan, version, isLatest) {
         : '';
 
     const flags = currentUser.role === 'director' && plan.student
-        ? `<div class="flag-toggle"><label><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> Tuition paying</label></div>
-           <div class="flag-toggle"><label><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> Registration complete</label></div>
-           <span id="flag-save-status"></span>`
-        : `<span class="flag-badge">${plan.student.tuition_paying ? 'Tuition paying' : 'No tuition'}</span>
-           <span class="flag-badge">${plan.student.registration_complete ? 'Registered' : 'Not registered'}</span>`;
+    ? `<div class="flag-list">
+         <label class="flag-item"><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> <span>Tuition paying</span></label>
+         <label class="flag-item"><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> <span>Registration complete</span></label>
+         <span id="flag-save-status"></span>
+       </div>`
+    : `<span class="flag-badge">${plan.student.tuition_paying ? 'Tuition paying' : 'No tuition'}</span>
+       <span class="flag-badge">${plan.student.registration_complete ? 'Registered' : 'Not registered'}</span>`;
+
 
     const header = `
         <div class="plan-header">
