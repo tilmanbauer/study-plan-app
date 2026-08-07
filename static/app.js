@@ -803,13 +803,14 @@ async function saveDirectorFlags(userId) {
     alert('Student status saved');
 }
 
-aasync function loadDirectorFlags(userId) {
+async function loadDirectorFlags(userId) {
     const user = await api(`/auth/users/${userId}/director-flags`);
     const tuitionBox = document.getElementById('tuition-paying');
     const registrationBox = document.getElementById('registration-complete');
     if (tuitionBox) tuitionBox.checked = user.tuition_paying;
     if (registrationBox) registrationBox.checked = user.registration_complete;
 }
+
 
 
 
