@@ -96,8 +96,9 @@ async function init() {
         return;
     }
     try {
-        currentUser = await api('/me');
-        const complete = await api('/me/complete');
+        currentUser = await api('/auth/me');
+        const complete = await api('/auth/me/complete');
+
         if (!complete.complete && currentUser.role === 'student') {
             renderProfileCompletion(complete.missing);
             return;
