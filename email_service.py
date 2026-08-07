@@ -97,7 +97,7 @@ def queue_director_notification(
         db.close()
 
 
-ddef _format_event_summary(db: Session, events: List[NotificationEvent]) -> str:
+def _format_event_summary(db: Session, events: List[NotificationEvent]) -> str:
     submissions = [e for e in events if e.type == "plan_submitted"]
     comments = [e for e in events if e.type == "comment_added"]
 
