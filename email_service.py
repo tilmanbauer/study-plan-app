@@ -37,7 +37,6 @@ def _send_email(to: str, subject: str, body: str) -> None:
         print(f"Failed to send email to {to}: {e}")
 
 
-
 def notify_student(student_email: str, plan_id: int, message: str) -> None:
     subject = f"Update on your study plan #{plan_id}"
     body = f"Hello,\n\n{message}\n\nLog in to review your plan."
@@ -49,6 +48,22 @@ def notify_directors(director_emails: List[str], plan_id: int, student_name: str
     body = f"Hello,\n\n{student_name} has updated study plan #{plan_id}.\n\n{message}\n\nLog in to review."
     for email in director_emails:
         _send_email(email, subject, body)
+
+
+def queue_director_notification(plan_id: int, student_id: int, comment_text: str = None) -> None:
+    db = SessionLocal()
+    try:
+        event = NotificationEvent(
+            type="plan_submitted",
+            plan_id=plan_id,
+            student_id=student_id,
+            comment_text=comment_text,
+        )
+        db.add(event)
+        db.commit()
+        print(f"Queued director notification for plan {plan_id}")
+    finally:
+        db.close()
 
 
 def _format_event_summary(db: Session, events: List[NotificationEvent]) -> str:
