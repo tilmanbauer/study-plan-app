@@ -96,12 +96,20 @@ def update_profile(
     if not validate_personal_number(update.personal_number):
         raise HTTPException(status_code=400, detail="Invalid personal number")
 
+    existing = db.query(User).filter(
+        User.personal_number == update.personal_number,
+        User.id != current_user.id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Personal number already registered")
+
     current_user.first_name = update.first_name
     current_user.last_name = update.last_name
     current_user.personal_number = update.personal_number
     db.commit()
     db.refresh(current_user)
     return current_user
+
 
 @router.get("/users/{user_id}/director-flags", response_model=UserOut)
 def get_director_flags(
