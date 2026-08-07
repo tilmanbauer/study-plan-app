@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import os
+import re
 
 from database import get_db
 from models import User
@@ -71,3 +72,31 @@ def require_role(role: str):
         return current_user
 
     return checker
+
+def validate_personal_number(pnr: str) -> bool:
+    # Remove optional dash or plus
+    digits = re.sub(r"[^\d]", "", pnr)
+
+    if len(digits) != 12 and len(digits) != 10:
+        return False
+
+    # Use last 10 digits for validation
+    if len(digits) == 12:
+        digits = digits[2:]
+
+    # Check date part roughly: YYMMDD
+    if not digits[:6].isdigit():
+        return False
+
+    # Luhn algorithm
+    total = 0
+    for i, ch in enumerate(digits[:-1]):
+        n = int(ch)
+        if i % 2 == 0:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+
+    check_digit = (10 - (total % 10)) % 10
+    return check_digit == int(digits[-1])

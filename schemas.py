@@ -6,11 +6,21 @@ from datetime import datetime
 class UserOut(BaseModel):
     id: int
     email: str
-    name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    personal_number: Optional[str] = None
     role: str
+    tuition_paying: bool = False
+    registration_complete: bool = False
 
     class Config:
         from_attributes = True
+
+
+class UserProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    personal_number: str
 
 
 class CourseCreate(BaseModel):

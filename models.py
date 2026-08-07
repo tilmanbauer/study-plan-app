@@ -9,12 +9,14 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    name = Column(String, nullable=False)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    personal_number = Column(String, unique=True, index=True, nullable=True)
+    role = Column(String, default="student")
     hashed_password = Column(String, nullable=True)
-    role = Column(String, nullable=False)
+    tuition_paying = Column(Boolean, default=False)
+    registration_complete = Column(Boolean, default=False)
 
-    plans = relationship("StudyPlan", back_populates="student")
-    comments = relationship("Comment", back_populates="author")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"

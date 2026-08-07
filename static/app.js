@@ -16,7 +16,6 @@ const TOTAL_CREDITS = 120;
 
 let currentUser = null;
 let courses = [];
-let editingPlanId = null;
 
 function statusLabel(status) {
     return STATUS_LABELS[status] || status;
@@ -27,6 +26,16 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = String(text);
     return div.innerHTML;
+}
+
+function formatUserName(user) {
+    if (!user) return '';
+    if (user.first_name && user.last_name) {
+        return `${user.first_name} ${user.last_name}`;
+    }
+    if (user.first_name) return user.first_name;
+    if (user.name) return user.name;
+    return user.email || '';
 }
 
 function getToken() {
@@ -88,6 +97,11 @@ async function init() {
     }
     try {
         currentUser = await api('/me');
+        const complete = await api('/me/complete');
+        if (!complete.complete && currentUser.role === 'student') {
+            renderProfileCompletion(complete.missing);
+            return;
+        }
         courses = await api('/courses');
         renderApp();
     } catch (e) {
@@ -97,6 +111,55 @@ async function init() {
     }
 }
 
+function renderProfileCompletion(missing) {
+    document.getElementById('user-bar').innerHTML = '';
+    document.getElementById('main').innerHTML = `
+        <div class="card">
+            <h2>Complete your profile</h2>
+            <p>Please provide the following information before creating your study plan.</p>
+            <div class="field">
+                <label>First name</label>
+                <input id="first-name" type="text">
+            </div>
+            <div class="field">
+                <label>Last name</label>
+                <input id="last-name" type="text">
+            </div>
+            <div class="field">
+                <label>Personal number (YYYYMMDD-XXXX)</label>
+                <input id="personal-number" type="text">
+            </div>
+            <button onclick="submitProfile()">Save</button>
+            <div id="profile-error" style="color:var(--danger);margin-top:0.5rem"></div>
+        </div>
+    `;
+}
+
+async function submitProfile() {
+    const first_name = document.getElementById('first-name').value.trim();
+    const last_name = document.getElementById('last-name').value.trim();
+    const personal_number = document.getElementById('personal-number').value.trim();
+
+    try {
+        const res = await fetch('/auth/me', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({ first_name, last_name, personal_number })
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Failed to save profile');
+        }
+        currentUser = await res.json();
+        courses = await api('/courses');
+        renderApp();
+    } catch (e) {
+        document.getElementById('profile-error').textContent = e.message;
+    }
+}
 
 let testAccounts = [];
 
@@ -118,7 +181,6 @@ async function loadLoginOptions() {
     }
     renderLogin();
 }
-
 
 function renderLogin() {
     const testButtons = testAccounts.map(acc => `
@@ -158,14 +220,12 @@ async function loginAsTest(email) {
         if (!res.ok) throw new Error('Test login failed');
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
         currentUser = data.user;
-        renderApp();
+        init();
     } catch (e) {
         document.getElementById('login-error').textContent = e.message;
     }
 }
-
 
 function logout() {
     clearToken();
@@ -175,7 +235,7 @@ function logout() {
 
 function renderApp() {
     document.getElementById('user-bar').innerHTML = `
-        <span>${escapeHtml(currentUser.name)} (${escapeHtml(currentUser.role)})</span>
+        <span>${escapeHtml(formatUserName(currentUser))} (${escapeHtml(currentUser.role)})</span>
         <button class="secondary" onclick="logout()" style="margin-left:1rem">Logout</button>
     `;
     if (currentUser.role === 'student') renderStudent();
@@ -447,6 +507,8 @@ function newPlan() {
     `;
 }
 
+let editingPlanId = null;
+
 async function editPlan(planId) {
     const plan = await api(`/plans/${planId}`);
     editingPlanId = planId;
@@ -601,7 +663,7 @@ async function savePlan(isUpdate) {
 function commentsHtml(comments) {
     return comments.map(c => `
         <div class="comment">
-            <div class="comment-meta">${escapeHtml(c.author.name)} • ${new Date(c.created_at).toLocaleString()}</div>
+            <div class="comment-meta">${escapeHtml(formatUserName(c.author))} • ${new Date(c.created_at).toLocaleString()}</div>
             <div>${escapeHtml(c.text)}</div>
         </div>
     `).join('') || '<p class="muted">No comments yet.</p>';
@@ -699,10 +761,25 @@ function renderPlanView(plan, version, isLatest) {
            <div class="actions"><button onclick="postComment(${plan.id})">Add Comment</button></div>`
         : '<p class="muted">Commenting is disabled for older versions.</p>';
 
+    const directorStatusCard = currentUser.role === 'director' && plan.student
+        ? `<div class="card" style="margin-top:1rem">
+            <h3>Student status</h3>
+            <label style="display:block;margin-bottom:0.5rem">
+                <input type="checkbox" id="tuition-paying" ${plan.student.tuition_paying ? 'checked' : ''}>
+                Tuition paying
+            </label>
+            <label style="display:block;margin-bottom:0.5rem">
+                <input type="checkbox" id="registration-complete" ${plan.student.registration_complete ? 'checked' : ''}>
+                Registration complete
+            </label>
+            <button onclick="saveDirectorFlags(${plan.student.id})">Save status</button>
+        </div>`
+        : '';
+
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>${escapeHtml(plan.title || 'Study Plan')}</h2>
-            <p>Admission term: ${plan.admission_term || '-'} • Status: <span class="status ${plan.status}">${statusLabel(plan.status)}</span> • Current version v${plan.current_version} • Student: ${escapeHtml(plan.student.name)}</p>
+            <p>Admission term: ${plan.admission_term || '-'} • Status: <span class="status ${plan.status}">${statusLabel(plan.status)}</span> • Current version v${plan.current_version} • Student: ${escapeHtml(formatUserName(plan.student))}</p>
             <div class="version-selector">${versionButtons}</div>
             ${diff}
             <h3>Courses</h3>
@@ -714,7 +791,15 @@ function renderPlanView(plan, version, isLatest) {
             ${comments}
             ${commentBox}
         </div>
+        ${directorStatusCard}
     `;
+}
+
+async function saveDirectorFlags(userId) {
+    const tuition_paying = document.getElementById('tuition-paying').checked;
+    const registration_complete = document.getElementById('registration-complete').checked;
+    await api(`/auth/users/${userId}/director-flags`, 'PATCH', { tuition_paying, registration_complete });
+    alert('Student status saved');
 }
 
 async function viewPlan(planId, versionNumber) {
@@ -805,7 +890,7 @@ async function renderDirector() {
     const plans = await api('/plans');
     const list = plans.map(p => `
         <tr>
-            <td>${escapeHtml(p.student.name)}</td>
+            <td>${escapeHtml(formatUserName(p.student))}</td>
             <td>${p.admission_term || '-'}</td>
             <td><span class="status ${p.status}">${statusLabel(p.status)}</span></td>
             <td>v${p.current_version}</td>

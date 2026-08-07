@@ -54,14 +54,26 @@ async def oidc_callback(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="OIDC email missing")
 
     role = "director" if email in DIRECTOR_EMAILS else "student"
-    name = userinfo.get("name", email)
+
+    full_name = userinfo.get("name", email)
+    parts = full_name.split()
+    first_name = parts[0] if parts else ""
+    last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        user = User(email=email, name=name, role=role)
+        user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+        )
         db.add(user)
     else:
-        user.name = name
+        if not user.first_name:
+            user.first_name = first_name
+        if not user.last_name:
+            user.last_name = last_name
         user.role = role
     db.commit()
     db.refresh(user)
