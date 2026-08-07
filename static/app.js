@@ -113,32 +113,30 @@ async function init() {
 }
 
 function renderProfileCompletion(missing) {
-    const missingList = missing.map(m => `<li>${m}</li>`).join('');
+    document.getElementById('user-bar').innerHTML = '';
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>Complete your profile</h2>
-            <p>Please fill in the following required information before continuing:</p>
-            <ul>${missingList}</ul>
-            <div class="form-row">
-                <label>First name</label>
-                <input type="text" id="first-name" placeholder="First name">
+            <p>Please provide the following information before creating your study plan.</p>
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;margin-bottom:0.25rem">First name</label>
+                <input id="first-name" type="text" style="width:100%;max-width:300px">
             </div>
-            <div class="form-row">
-                <label>Last name</label>
-                <input type="text" id="last-name" placeholder="Last name">
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;margin-bottom:0.25rem">Last name</label>
+                <input id="last-name" type="text" style="width:100%;max-width:300px">
             </div>
-            <div class="form-row">
-                <label>Personal number</label>
-                <input type="text" id="personal-number" placeholder="YYYYMMDD-XXXX">
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;margin-bottom:0.25rem">Personal number (YYYYMMDD-XXXX)</label>
+                <input id="personal-number" type="text" style="width:100%;max-width:300px">
             </div>
-            <div id="profile-error" class="error"></div>
-            <div class="actions">
-                <button onclick="submitProfile()">Save</button>
-                <button onclick="clearToken(); loadLoginOptions();">Cancel / Log out</button>
-            </div>
+            <button onclick="submitProfile()">Save</button>
+            <button class="secondary" onclick="clearToken(); loadLoginOptions();">Cancel / Log out</button>
+            <div id="profile-error" style="color:var(--danger);margin-top:0.5rem"></div>
         </div>
     `;
 }
+
 
 
 async function submitProfile() {
