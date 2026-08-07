@@ -433,3 +433,53 @@ input, select, textarea {
     flex: 1;
     min-width: 100px;
 }
+
+.plan-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.header-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.flags {
+    display: inline-flex;
+    gap: 0.75rem;
+}
+
+.flag-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.flag-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: var(--bg-muted);
+    font-size: 0.85rem;
+}
+
+.version-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+#flag-save-status {
+    margin-left: 0.5rem;
+    color: var(--success);
+    font-size: 0.85rem;
+}

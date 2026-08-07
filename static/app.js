@@ -733,6 +733,22 @@ function renderPlanView(plan, version, isLatest) {
         ? '<div class="diff-summary"><strong>First version.</strong></div>'
         : `<div class="diff-summary"><strong>Changes from version ${version.previous_version_number}:</strong> ${escapeHtml(version.diff_summary)}</div>`;
 
+    const flags = currentUser.role === 'director' && plan.student
+        ? `<label class="flag-toggle"><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> Tuition paying</label>
+           <label class="flag-toggle"><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> Registration complete</label>`
+        : `<span class="flag-badge">${plan.student.tuition_paying ? 'Tuition paying' : 'No tuition'}</span>
+           <span class="flag-badge">${plan.student.registration_complete ? 'Registered' : 'Not registered'}</span>`;
+
+    const header = `
+        <div class="plan-header">
+            <span class="header-item"><strong>${escapeHtml(formatUserName(plan.student))}</strong></span>
+            <span class="header-item">${plan.admission_term || '-'}</span>
+            <span class="header-item flags">${flags}</span>
+            <span class="header-item"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
+            <span class="header-item version-badge">v${plan.current_version}</span>
+        </div>
+    `;
+
     let actions = `<button class="secondary" onclick="renderApp()">Back</button>`;
 
     if (currentUser.role === 'student' && plan.student_id === currentUser.id) {
@@ -761,43 +777,31 @@ function renderPlanView(plan, version, isLatest) {
     const comments = commentsHtml(plan.comments);
 
     const commentBox = isLatest
-        ? `<textarea id="comment-text" placeholder="Add a comment..." rows="2" style="margin-top:1rem"></textarea>
-           <div class="actions"><button onclick="postComment(${plan.id})">Add Comment</button></div>`
-        : '<p class="muted">Commenting is disabled for older versions.</p>';
-
-    const directorStatusCard = currentUser.role === 'director' && plan.student
-        ? `<div class="card" style="margin-top:1rem">
-            <h3>Student status</h3>
-            <label style="display:block;margin-bottom:0.5rem">
-                <input type="checkbox" id="tuition-paying" ${plan.student.tuition_paying ? 'checked' : ''}>
-                Tuition paying
-            </label>
-            <label style="display:block;margin-bottom:0.5rem">
-                <input type="checkbox" id="registration-complete" ${plan.student.registration_complete ? 'checked' : ''}>
-                Registration complete
-            </label>
-            <button onclick="saveDirectorFlags(${plan.student.id})">Save status</button>
+        ? `<div class="card">
+            <h3>Comments</h3>
+            ${comments}
+            <textarea id="comment-text" placeholder="Add a comment..." rows="2" style="margin-top:1rem"></textarea>
+            <div class="actions"><button onclick="postComment(${plan.id})">Add Comment</button></div>
         </div>`
-        : '';
+        : `<div class="card">
+            <h3>Comments</h3>
+            ${comments}
+            <p class="muted">Commenting is disabled for older versions.</p>
+        </div>`;
 
     document.getElementById('main').innerHTML = `
         <div class="card">
-            <h2>${escapeHtml(plan.title || 'Study Plan')}</h2>
-            <p>Admission term: ${plan.admission_term || '-'} • Status: <span class="status ${plan.status}">${statusLabel(plan.status)}</span> • Current version v${plan.current_version} • Student: ${escapeHtml(formatUserName(plan.student))}</p>
-            <div class="version-selector">${versionButtons}</div>
+            ${header}
+            <hr>
             ${diff}
             <h3>Courses</h3>
             ${itemsByTermHtml(plan.admission_term, version.items)}
             <div class="actions">${actions}</div>
         </div>
-        <div class="card">
-            <h3>Comments</h3>
-            ${comments}
-            ${commentBox}
-        </div>
-        ${directorStatusCard}
+        ${commentBox}
     `;
 }
+
 
 async function saveDirectorFlags(userId) {
     const tuition_paying = document.getElementById('tuition-paying').checked;
@@ -806,8 +810,13 @@ async function saveDirectorFlags(userId) {
         method: 'PATCH',
         body: { tuition_paying, registration_complete }
     });
-    alert('Student status saved');
+    const status = document.getElementById('flag-save-status');
+    if (status) {
+        status.textContent = 'Saved';
+        setTimeout(() => status.textContent = '', 1500);
+    }
 }
+
 
 async function loadDirectorFlags(userId) {
     const user = await api(`/auth/users/${userId}/director-flags`);
