@@ -97,26 +97,31 @@ def queue_director_notification(
         db.close()
 
 
-def _format_event_summary(db: Session, events: List[NotificationEvent]) -> str:
+ddef _format_event_summary(db: Session, events: List[NotificationEvent]) -> str:
     submissions = [e for e in events if e.type == "plan_submitted"]
     comments = [e for e in events if e.type == "comment_added"]
+
+    def _user_name(user):
+        if not user:
+            return "Unknown"
+        if user.first_name and user.last_name:
+            return f"{user.first_name} {user.last_name}"
+        if user.first_name:
+            return user.first_name
+        return user.email
 
     lines = []
     if submissions:
         lines.append(f"New submissions: {len(submissions)}")
         for e in submissions:
             student = db.query(User).filter(User.id == e.student_id).first()
-            lines.append(
-                f"  - Plan #{e.plan_id} by {student.name if student else 'Unknown'}"
-            )
+            lines.append(f"  - Plan #{e.plan_id} by {_user_name(student)}")
 
     if comments:
         lines.append(f"New comments: {len(comments)}")
         for e in comments:
             student = db.query(User).filter(User.id == e.student_id).first()
-            lines.append(
-                f"  - Plan #{e.plan_id} by {student.name if student else 'Unknown'}: {e.comment_text or ''}"
-            )
+            lines.append(f"  - Plan #{e.plan_id} by {_user_name(student)}: {e.comment_text or ''}")
 
     return "\n".join(lines) if lines else "No new activity."
 
@@ -147,14 +152,13 @@ def send_director_daily_summary() -> None:
         subject = "Daily summary: new study plan activity"
 
         for director in directors:
-            body = f"Hello {director.name},\n\nHere is the daily summary of study plan activity:\n\n{summary}\n\nPlease log in to review."
+            name = director.first_name or director.email
+            body = f"Hello {name},\n\nHere is the daily summary of study plan activity:\n\n{summary}\n\nPlease log in to review."
             _send_email(director.email, subject, body)
 
         for event in events:
             event.sent_at = datetime.utcnow()
         db.commit()
-        print(
-            f"Sent daily summary to {len(directors)} director(s) for {len(events)} event(s)."
-        )
+        print(f"Sent daily summary to {len(directors)} director(s) for {len(events)} event(s).")
     finally:
         db.close()

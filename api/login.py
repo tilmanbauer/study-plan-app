@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from schemas import UserOut
-from auth import get_current_user, create_access_token, require_role
+from auth import get_current_user, create_access_token, require_director, validate_personal_number
 from config import ENABLE_TEST_LOGIN
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -108,7 +108,7 @@ def update_profile(
 def update_director_flags(
     user_id: int,
     update: DirectorFlagsUpdate,
-    current_user: User = Depends(require_role("director")),
+    current_user: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.id == user_id).first()

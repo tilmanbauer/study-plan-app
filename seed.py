@@ -4,7 +4,7 @@ from database import engine, Base
 from models import User, Course
 from auth import get_password_hash
 
-DB_FILE = "study_plans.db"
+DB_FILE = "studyplan.db"
 
 if os.path.exists(DB_FILE):
     os.remove(DB_FILE)
@@ -15,8 +15,8 @@ Base.metadata.create_all(bind=engine)
 db = Session(bind=engine)
 
 DEMO_USERS = [
-    {"email": "student@university.edu", "name": "Student Demo", "password": "student", "role": "student"},
-    {"email": "director@university.edu", "name": "Director Demo", "password": "director", "role": "director"},
+    {"email": "student@university.edu", "first_name": "Student", "last_name": "Demo", "password": "student", "role": "student"},
+    {"email": "director@university.edu", "first_name": "Director", "last_name": "Demo", "password": "director", "role": "director"},
 ]
 
 DEMO_COURSES = [
@@ -30,7 +30,8 @@ def seed_users(db: Session) -> None:
     for u in DEMO_USERS:
         db.add(User(
             email=u["email"],
-            name=u["name"],
+            first_name=u["first_name"],
+            last_name=u["last_name"],
             hashed_password=get_password_hash(u["password"]),
             role=u["role"],
         ))

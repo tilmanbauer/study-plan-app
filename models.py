@@ -26,12 +26,12 @@ class User(Base):
     tuition_paying = Column(Boolean, default=False)
     registration_complete = Column(Boolean, default=False)
 
-    plans = relationship("Plan", back_populates="student", cascade="all, delete-orphan")
+    plans = relationship("StudyPlan", back_populates="student", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan")
 
 
-class Plan(Base):
-    __tablename__ = "plans"
+class StudyPlan(Base):
+    __tablename__ = "study_plans"
 
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -43,36 +43,36 @@ class Plan(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     student = relationship("User", back_populates="plans")
-    versions = relationship("PlanVersion", back_populates="plan", cascade="all, delete-orphan", order_by="desc(PlanVersion.version_number)")
+    versions = relationship("StudyPlanVersion", back_populates="plan", cascade="all, delete-orphan", order_by="desc(StudyPlanVersion.version_number)")
     comments = relationship("Comment", back_populates="plan", cascade="all, delete-orphan", order_by="desc(Comment.created_at)")
 
 
-class PlanVersion(Base):
-    __tablename__ = "plan_versions"
+class StudyPlanVersion(Base):
+    __tablename__ = "study_plan_versions"
 
     id = Column(Integer, primary_key=True, index=True)
-    plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
+    plan_id = Column(Integer, ForeignKey("study_plans.id"), nullable=False)
     version_number = Column(Integer, nullable=False)
     previous_version_number = Column(Integer, nullable=True)
     diff_summary = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    plan = relationship("Plan", back_populates="versions")
-    items = relationship("PlanItem", back_populates="version", cascade="all, delete-orphan")
+    plan = relationship("StudyPlan", back_populates="versions")
+    items = relationship("StudyPlanItem", back_populates="version", cascade="all, delete-orphan")
 
 
-class PlanItem(Base):
-    __tablename__ = "plan_items"
+class StudyPlanItem(Base):
+    __tablename__ = "study_plan_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    version_id = Column(Integer, ForeignKey("plan_versions.id"), nullable=False)
+    version_id = Column(Integer, ForeignKey("study_plan_versions.id"), nullable=False)
     term = Column(String, nullable=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     custom_code = Column(String, nullable=True)
     custom_title = Column(String, nullable=True)
     credits = Column(Float, nullable=True)
 
-    version = relationship("PlanVersion", back_populates="items")
+    version = relationship("StudyPlanVersion", back_populates="items")
     course = relationship("Course")
 
 
@@ -86,19 +86,19 @@ class Course(Base):
     credits = Column(Float, nullable=False)
     term = Column(String, nullable=False)
 
-    plan_items = relationship("PlanItem", back_populates="course")
+    plan_items = relationship("StudyPlanItem", back_populates="course")
 
 
 class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True, index=True)
-    plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
+    plan_id = Column(Integer, ForeignKey("study_plans.id"), nullable=False)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     text = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    plan = relationship("Plan", back_populates="comments")
+    plan = relationship("StudyPlan", back_populates="comments")
     author = relationship("User", back_populates="comments")
 
 
@@ -107,7 +107,7 @@ class NotificationEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     type = Column(String, nullable=False)
-    plan_id = Column(Integer, ForeignKey("plans.id"), nullable=True)
+    plan_id = Column(Integer, ForeignKey("study_plans.id"), nullable=True)
     student_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     comment_text = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
