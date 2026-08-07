@@ -986,28 +986,22 @@ async function renderCourseAdminInline() {
 
     container.innerHTML = `
         <h3>Add Course</h3>
-        <div class="form-row">
-            <label>University</label>
-            <input id="course-university" type="text">
+        <div class="course-entry-row">
+            <input id="course-university" type="text" placeholder="University">
+            <input id="course-code" type="text" placeholder="Code">
+            <input id="course-title" type="text" placeholder="Title">
+            <input id="course-credits" type="number" step="0.1" placeholder="Credits">
+            <input id="course-term" type="text" placeholder="Term">
+            <button onclick="addCourse()">Add</button>
         </div>
-        <div class="form-row">
-            <label>Code</label>
-            <input id="course-code" type="text">
-        </div>
-        <div class="form-row">
-            <label>Title</label>
-            <input id="course-title" type="text">
-        </div>
-        <div class="form-row">
-            <label>Credits</label>
-            <input id="course-credits" type="number" step="0.1">
-        </div>
-        <div class="form-row">
-            <label>Term</label>
-            <input id="course-term" type="text">
-        </div>
-        <button onclick="addCourse()">Add Course</button>
         <div id="course-error" style="color:var(--danger);margin-top:0.5rem"></div>
+
+        <h3 style="margin-top:1.5rem">Bulk Upload CSV</h3>
+        <p>Upload a CSV with columns: university, code, title, credits, term</p>
+        <div class="course-entry-row">
+            <input type="file" id="course-file" accept=".csv">
+            <button onclick="importCoursesCsv()">Upload</button>
+        </div>
 
         <h3 style="margin-top:1.5rem">All Courses</h3>
         <table>
@@ -1124,8 +1118,8 @@ async function deleteCourse(courseId) {
     renderCourseAdmin();
 }
 
-async function importCourseCsv() {
-    const input = document.getElementById('course-csv');
+aasync function importCourseCsv() {
+    const input = document.getElementById('course-file');
     if (!input.files.length) {
         alert('Please select a CSV file.');
         return;
@@ -1146,7 +1140,8 @@ async function importCourseCsv() {
         return;
     }
     alert('Import successful');
-    renderCourseAdmin();
+    await renderCourseAdminInline();
 }
+
 
 init();

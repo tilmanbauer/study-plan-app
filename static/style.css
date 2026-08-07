@@ -422,3 +422,14 @@ input, select, textarea {
     display: block;
 }
 
+.course-entry-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.course-entry-row input {
+    flex: 1;
+    min-width: 100px;
+}
