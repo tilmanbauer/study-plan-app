@@ -42,10 +42,23 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
+def require_role(role: str):
+    def checker(user: User = Depends(get_current_user)) -> User:
+        if user.role != role:
+            raise HTTPException(status_code=403, detail=f"{role} access required")
+        return user
+    return checker
+
+
 def require_director(user: User = Depends(get_current_user)) -> User:
     if user.role != "director":
         raise HTTPException(status_code=403, detail="Director access required")
     return user
+
+
+def get_password_hash(password: str) -> str:
+    # Replace with your actual password hashing function
+    return password
 
 
 def validate_personal_number(pnr: str) -> bool:
