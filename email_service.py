@@ -7,6 +7,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import NotificationEvent, User
+from config import EMAIL_ENABLED
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -16,7 +17,7 @@ SMTP_FROM = os.getenv("SMTP_FROM", "no-reply@kth.se")
 
 
 def _send_email(to: str, subject: str, body: str) -> None:
-    if not SMTP_HOST:
+    if not EMAIL_ENABLED:
         print(f"[EMAIL] To: {to}\nSubject: {subject}\n{body}\n")
         return
 
@@ -34,6 +35,7 @@ def _send_email(to: str, subject: str, body: str) -> None:
         print(f"Email sent to {to}: {subject}")
     except Exception as e:
         print(f"Failed to send email to {to}: {e}")
+
 
 
 def notify_student(student_email: str, plan_id: int, message: str) -> None:
