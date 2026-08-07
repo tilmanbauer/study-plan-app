@@ -37,10 +37,13 @@ def _send_email(to: str, subject: str, body: str) -> None:
         print(f"Failed to send email to {to}: {e}")
 
 
-def notify_student(student_email: str, plan_id: int, message: str) -> None:
+def notify_student(student_email: str, plan_id: int, message: str, plan_title: str = None) -> None:
     subject = f"Update on your study plan #{plan_id}"
     body = f"Hello,\n\n{message}\n\nLog in to review your plan."
+    if plan_title:
+        body += f"\n\nPlan title: {plan_title}"
     _send_email(student_email, subject, body)
+
 
 
 def notify_directors(director_emails: List[str], plan_id: int, student_name: str, message: str) -> None:
