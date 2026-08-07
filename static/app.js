@@ -911,7 +911,9 @@ async function requestChanges(planId) {
 
 async function renderDirector() {
     const plans = await api('/plans');
-    const list = plans.map(p => `
+    const allCourses = await api('/courses');
+
+    const planRows = plans.map(p => `
         <tr>
             <td>${escapeHtml(formatUserName(p.student))}</td>
             <td>${p.admission_term || '-'}</td>
@@ -919,6 +921,16 @@ async function renderDirector() {
             <td>v${p.current_version}</td>
             <td>${new Date(p.updated_at).toLocaleDateString()}</td>
             <td><button onclick="viewPlan(${p.id})">Review</button></td>
+        </tr>
+    `).join('');
+
+    const courseRows = allCourses.map(c => `
+        <tr>
+            <td>${escapeHtml(c.university)}</td>
+            <td>${escapeHtml(c.code)}</td>
+            <td>${escapeHtml(c.title)}</td>
+            <td>${c.credits}</td>
+            <td>${escapeHtml(c.term)}</td>
         </tr>
     `).join('');
 
@@ -932,27 +944,55 @@ async function renderDirector() {
 
     document.getElementById('main').innerHTML = `
         <div class="card">
-            <h2>All Study Plans</h2>
-            <table>
-                <thead><tr><th>Student</th><th>Admission</th><th>Status</th><th>Version</th><th>Updated</th><th>Actions</th></tr></thead>
-                <tbody>${list || '<tr><td colspan="6">No plans yet.</td></tr>'}</tbody>
-            </table>
-            <div class="actions">
-                <button onclick="renderCourseAdmin()">Manage Courses</button>
+            <h2>Director Dashboard</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('plans')" id="tab-plans">Study Plans</button>
+                <button class="tab" onclick="switchTab('courses')" id="tab-courses">Courses</button>
+                <button class="tab" onclick="switchTab('registrations')" id="tab-registrations">Registrations</button>
             </div>
-        </div>
-        <div class="card">
-            <h2>Export Registrations</h2>
-            <div class="form-row">
-                <select id="export-term">
-                    <option value="">-- select term --</option>
-                    ${termOptions || '<option value="">No terms available</option>'}
-                </select>
-                <button onclick="exportSelectedTerm()">Download CSV</button>
+
+            <div id="tab-content-plans" class="tab-content active">
+                <table>
+                    <thead>
+                        <tr><th>Student</th><th>Admission</th><th>Status</th><th>Version</th><th>Updated</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>${planRows || '<tr><td colspan="6">No plans yet.</td></tr>'}</tbody>
+                </table>
+            </div>
+
+            <div id="tab-content-courses" class="tab-content" style="display:none">
+                <div class="actions">
+                    <button onclick="renderCourseAdmin()">Manage Courses</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>University</th><th>Code</th><th>Title</th><th>Credits</th><th>Term</th></tr>
+                    </thead>
+                    <tbody>${courseRows || '<tr><td colspan="5">No courses yet.</td></tr>'}</tbody>
+                </table>
+            </div>
+
+            <div id="tab-content-registrations" class="tab-content" style="display:none">
+                <div class="form-row">
+                    <select id="export-term">
+                        <option value="">-- select term --</option>
+                        ${termOptions || '<option value="">No terms available</option>'}
+                    </select>
+                    <button onclick="exportSelectedTerm()">Download CSV</button>
+                </div>
+                <p>Select a term and download the full registration matrix.</p>
             </div>
         </div>
     `;
 }
+
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    document.getElementById(`tab-${name}`).classList.add('active');
+    document.getElementById(`tab-content-${name}`).style.display = 'block';
+}
+
 
 
 async function exportTermCsv(term) {
