@@ -1118,7 +1118,7 @@ async function deleteCourse(courseId) {
     renderCourseAdmin();
 }
 
-aasync function importCourseCsv() {
+async function importCourseCsv() {
     const input = document.getElementById('course-file');
     if (!input.files.length) {
         alert('Please select a CSV file.');
