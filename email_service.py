@@ -1,100 +1,52 @@
-import logging
 import os
 import smtplib
-from datetime import datetime, timedelta
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from datetime import datetime, timedelta
 from typing import List
 
 from sqlalchemy.orm import Session
-
 from database import SessionLocal
 from models import NotificationEvent, User
-
-logger = logging.getLogger(__name__)
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "")
-SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
+SMTP_FROM = os.getenv("SMTP_FROM", "no-reply@kth.se")
 
 
 def _send_email(to: str, subject: str, body: str) -> None:
-    if not SMTP_HOST or not SMTP_FROM:
-        print("\n" + "=" * 60)
-        print(f"EMAIL TO: {to}")
-        print(f"SUBJECT: {subject}")
-        print("-" * 60)
-        print(body)
-        print("=" * 60 + "\n")
-        logger.info(f"Email logged for {to}: {subject}")
+    if not SMTP_HOST:
+        print(f"[EMAIL] To: {to}\nSubject: {subject}\n{body}\n")
         return
 
-    msg = MIMEMultipart()
-    msg["From"] = SMTP_FROM
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
-
     try:
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = SMTP_FROM
+        msg["To"] = to
+
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            if SMTP_TLS:
-                server.starttls()
-                server.ehlo()
+            server.starttls()
             if SMTP_USER and SMTP_PASSWORD:
                 server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [to], msg.as_string())
-        logger.info(f"Email sent to {to}: {subject}")
+        print(f"Email sent to {to}: {subject}")
     except Exception as e:
-        logger.error(f"Failed to send email to {to}: {e}")
-        raise
+        print(f"Failed to send email to {to}: {e}")
 
 
-def notify_student(student_email: str, plan_title: str, event_type: str,
-                   comment: str = None) -> None:
-    subjects = {
-        "approved": "Your study plan has been approved",
-        "rejected": "Your study plan has been rejected",
-        "changes_requested": "Changes requested for your study plan",
-    }
-    subject = subjects.get(event_type, "Update on your study plan")
-
-    status_text = event_type.replace("_", " ")
-    body = (
-        f"Your study plan '{plan_title}' has been {status_text}."
-        if plan_title
-        else f"Your study plan has been {status_text}."
-    )
-
-    if comment:
-        body += f"\n\nComment from director:\n{comment}"
-
+def notify_student(student_email: str, plan_id: int, message: str) -> None:
+    subject = f"Update on your study plan #{plan_id}"
+    body = f"Hello,\n\n{message}\n\nLog in to review your plan."
     _send_email(student_email, subject, body)
 
 
-def queue_director_notification(
-    event_type: str,
-    plan_id: int,
-    student_id: int,
-    comment_text: str = None,
-) -> None:
-    db = SessionLocal()
-    try:
-        event = NotificationEvent(
-            type=event_type,
-            plan_id=plan_id,
-            student_id=student_id,
-            comment_text=comment_text,
-            created_at=datetime.utcnow(),
-            recipient_role="director",
-        )
-        db.add(event)
-        db.commit()
-    finally:
-        db.close()
+def notify_directors(director_emails: List[str], plan_id: int, student_name: str, message: str) -> None:
+    subject = f"Study plan #{plan_id} update"
+    body = f"Hello,\n\n{student_name} has updated study plan #{plan_id}.\n\n{message}\n\nLog in to review."
+    for email in director_emails:
+        _send_email(email, subject, body)
 
 
 def _format_event_summary(db: Session, events: List[NotificationEvent]) -> str:
