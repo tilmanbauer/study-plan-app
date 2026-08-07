@@ -799,7 +799,10 @@ function renderPlanView(plan, version, isLatest) {
 async function saveDirectorFlags(userId) {
     const tuition_paying = document.getElementById('tuition-paying').checked;
     const registration_complete = document.getElementById('registration-complete').checked;
-    await api(`/auth/users/${userId}/director-flags`, 'PATCH', { tuition_paying, registration_complete });
+    await api(`/auth/users/${userId}/director-flags`, {
+        method: 'PATCH',
+        body: { tuition_paying, registration_complete }
+    });
     alert('Student status saved');
 }
 
@@ -810,6 +813,7 @@ async function loadDirectorFlags(userId) {
     if (tuitionBox) tuitionBox.checked = user.tuition_paying;
     if (registrationBox) registrationBox.checked = user.registration_complete;
 }
+
 
 
 
