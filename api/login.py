@@ -57,15 +57,13 @@ def test_login(req: TestLoginRequest, db: Session = Depends(get_db)):
         )
         db.add(user)
     else:
-        user.first_name = info["first_name"]
-        user.last_name = info["last_name"]
+        # Only update role; preserve names and personal_number set by the user
         user.role = info["role"]
     db.commit()
     db.refresh(user)
 
     access_token = create_access_token({"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer", "user": user}
-
 
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
