@@ -744,29 +744,15 @@ function renderPlanView(plan, version, isLatest) {
 
 
     const header = `
-        <div class="plan-header">
-            <div class="header-block">
-                <span class="header-label">Student</span>
-                <span class="header-value">${escapeHtml(formatUserName(plan.student))}</span>
-            </div>
-            <div class="header-block">
-                <span class="header-label">Admission</span>
-                <span class="header-value">${plan.admission_term || '-'}</span>
-            </div>
-            <div class="header-block flags-block">
-                <span class="header-label">Status flags</span>
-                <span class="header-value flags">${flags}</span>
-            </div>
-            <div class="header-block">
-                <span class="header-label">Plan status</span>
-                <span class="header-value"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
-            </div>
-            <div class="header-block">
-                <span class="header-label">Version</span>
-                <span class="header-value version-badge">v${plan.current_version}</span>
-            </div>
-        </div>
-    `;
+    <div class="plan-header">
+        <span class="header-value">${escapeHtml(formatUserName(plan.student))}</span>
+        <span class="header-value">adm. ${plan.admission_term || '-'}</span>
+        <span class="flags">${flags}</span>
+        <span class="header-value"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
+        <span class="version-badge">v${plan.current_version}</span>
+    </div>
+`;
+
 
     let actions = `<button class="secondary" onclick="renderApp()">Back</button>`;
 
