@@ -911,7 +911,6 @@ async function requestChanges(planId) {
 
 async function renderDirector() {
     const plans = await api('/plans');
-    const allCourses = await api('/courses');
 
     const planRows = plans.map(p => `
         <tr>
@@ -921,16 +920,6 @@ async function renderDirector() {
             <td>v${p.current_version}</td>
             <td>${new Date(p.updated_at).toLocaleDateString()}</td>
             <td><button onclick="viewPlan(${p.id})">Review</button></td>
-        </tr>
-    `).join('');
-
-    const courseRows = allCourses.map(c => `
-        <tr>
-            <td>${escapeHtml(c.university)}</td>
-            <td>${escapeHtml(c.code)}</td>
-            <td>${escapeHtml(c.title)}</td>
-            <td>${c.credits}</td>
-            <td>${escapeHtml(c.term)}</td>
         </tr>
     `).join('');
 
@@ -961,15 +950,7 @@ async function renderDirector() {
             </div>
 
             <div id="tab-content-courses" class="tab-content" style="display:none">
-                <div class="actions">
-                    <button onclick="renderCourseAdmin()">Manage Courses</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>University</th><th>Code</th><th>Title</th><th>Credits</th><th>Term</th></tr>
-                    </thead>
-                    <tbody>${courseRows || '<tr><td colspan="5">No courses yet.</td></tr>'}</tbody>
-                </table>
+                <div id="course-admin-container"></div>
             </div>
 
             <div id="tab-content-registrations" class="tab-content" style="display:none">
@@ -984,7 +965,60 @@ async function renderDirector() {
             </div>
         </div>
     `;
+
+    renderCourseAdminInline();
 }
+
+async function renderCourseAdminInline() {
+    const container = document.getElementById('course-admin-container');
+    if (!container) return;
+    const allCourses = await api('/courses');
+    const rows = allCourses.map(c => `
+        <tr>
+            <td>${escapeHtml(c.university)}</td>
+            <td>${escapeHtml(c.code)}</td>
+            <td>${escapeHtml(c.title)}</td>
+            <td>${c.credits}</td>
+            <td>${escapeHtml(c.term)}</td>
+            <td><button onclick="deleteCourse(${c.id})">Delete</button></td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <h3>Add Course</h3>
+        <div class="form-row">
+            <label>University</label>
+            <input id="course-university" type="text">
+        </div>
+        <div class="form-row">
+            <label>Code</label>
+            <input id="course-code" type="text">
+        </div>
+        <div class="form-row">
+            <label>Title</label>
+            <input id="course-title" type="text">
+        </div>
+        <div class="form-row">
+            <label>Credits</label>
+            <input id="course-credits" type="number" step="0.1">
+        </div>
+        <div class="form-row">
+            <label>Term</label>
+            <input id="course-term" type="text">
+        </div>
+        <button onclick="addCourse()">Add Course</button>
+        <div id="course-error" style="color:var(--danger);margin-top:0.5rem"></div>
+
+        <h3 style="margin-top:1.5rem">All Courses</h3>
+        <table>
+            <thead>
+                <tr><th>University</th><th>Code</th><th>Title</th><th>Credits</th><th>Term</th><th>Actions</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="6">No courses yet.</td></tr>'}</tbody>
+        </table>
+    `;
+}
+
 
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
