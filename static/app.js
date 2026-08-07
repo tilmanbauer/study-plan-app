@@ -729,23 +729,39 @@ function renderPlanView(plan, version, isLatest) {
         return `<button class="version-btn ${active}" onclick="viewPlan(${plan.id}, ${v.version_number})">v${v.version_number}</button>`;
     }).join(' ');
 
-    const diff = version.previous_version_number === null
-        ? '<div class="diff-summary"><strong>First version.</strong></div>'
-        : `<div class="diff-summary"><strong>Changes from version ${version.previous_version_number}:</strong> ${escapeHtml(version.diff_summary)}</div>`;
+    const diff = version.previous_version_number !== null
+        ? `<div class="diff-summary"><strong>Changes from version ${version.previous_version_number}:</strong> ${escapeHtml(version.diff_summary)}</div>`
+        : '';
 
     const flags = currentUser.role === 'director' && plan.student
-        ? `<label class="flag-toggle"><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> Tuition paying</label>
-           <label class="flag-toggle"><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> Registration complete</label>`
+        ? `<div class="flag-toggle"><label><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> Tuition paying</label></div>
+           <div class="flag-toggle"><label><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> Registration complete</label></div>
+           <span id="flag-save-status"></span>`
         : `<span class="flag-badge">${plan.student.tuition_paying ? 'Tuition paying' : 'No tuition'}</span>
            <span class="flag-badge">${plan.student.registration_complete ? 'Registered' : 'Not registered'}</span>`;
 
     const header = `
         <div class="plan-header">
-            <span class="header-item"><strong>${escapeHtml(formatUserName(plan.student))}</strong></span>
-            <span class="header-item">${plan.admission_term || '-'}</span>
-            <span class="header-item flags">${flags}</span>
-            <span class="header-item"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
-            <span class="header-item version-badge">v${plan.current_version}</span>
+            <div class="header-block">
+                <span class="header-label">Student</span>
+                <span class="header-value">${escapeHtml(formatUserName(plan.student))}</span>
+            </div>
+            <div class="header-block">
+                <span class="header-label">Admission</span>
+                <span class="header-value">${plan.admission_term || '-'}</span>
+            </div>
+            <div class="header-block flags-block">
+                <span class="header-label">Status flags</span>
+                <span class="header-value flags">${flags}</span>
+            </div>
+            <div class="header-block">
+                <span class="header-label">Plan status</span>
+                <span class="header-value"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
+            </div>
+            <div class="header-block">
+                <span class="header-label">Version</span>
+                <span class="header-value version-badge">v${plan.current_version}</span>
+            </div>
         </div>
     `;
 
@@ -792,7 +808,6 @@ function renderPlanView(plan, version, isLatest) {
     document.getElementById('main').innerHTML = `
         <div class="card">
             ${header}
-            <hr>
             ${diff}
             <h3>Courses</h3>
             ${itemsByTermHtml(plan.admission_term, version.items)}
