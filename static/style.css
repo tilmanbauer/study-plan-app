@@ -436,11 +436,15 @@ input, select, textarea {
 
 .plan-header {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border);
+}
+
+.flags-block {
+    min-width: 220px;
 }
 
 .header-block {
