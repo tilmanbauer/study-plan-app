@@ -10,3 +10,4 @@ apscheduler
 authlib
 itsdangerous
 httpx
+email-validator
