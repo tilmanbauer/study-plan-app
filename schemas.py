@@ -11,12 +11,12 @@ class UserOut(BaseModel):
     personal_number: Optional[str] = None
     admission_term: Optional[str] = None
     role: str
+    is_active: bool = True
     tuition_paying: bool = False
     registration_complete: bool = False
 
     class Config:
         from_attributes = True
-
 
 class UserProfileUpdate(BaseModel):
     first_name: str

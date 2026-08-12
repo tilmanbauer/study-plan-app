@@ -1,4 +1,5 @@
 import re
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, validator
@@ -30,8 +31,10 @@ class RegisterRequest(BaseModel):
     password: str
     first_name: str
     last_name: str
-    personal_number: str
-    admission_term: str
+    role: str = "student"
+    personal_number: str = ""
+    admission_term: str = ""
+    director_secret: str = ""
 
 
 class DirectorCreateRequest(BaseModel):
@@ -101,17 +104,29 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
             detail="Password must be at least 10 characters and include uppercase, lowercase, digit, and special character"
         )
 
-    if not validate_personal_number(req.personal_number):
-        raise HTTPException(status_code=400, detail="Invalid personal number")
+    _validate_role(req.role)
+
+    if req.role == "student":
+        if not req.personal_number:
+            raise HTTPException(status_code=400, detail="Personal number is required")
+        if not validate_personal_number(req.personal_number):
+            raise HTTPException(status_code=400, detail="Invalid personal number")
+        if not req.admission_term:
+            raise HTTPException(status_code=400, detail="Admission term is required")
+    elif req.role == "director":
+        if not DIRECTOR_ACCOUNT_SECRET:
+            raise HTTPException(status_code=403, detail="Director account creation is disabled")
+        if req.director_secret != DIRECTOR_ACCOUNT_SECRET:
+            raise HTTPException(status_code=403, detail="Invalid director secret")
 
     user = User(
         email=req.email,
         hashed_password=get_password_hash(req.password),
         first_name=req.first_name,
         last_name=req.last_name,
-        personal_number=req.personal_number,
-        admission_term=req.admission_term,
-        role="student",
+        personal_number=req.personal_number if req.role == "student" else None,
+        admission_term=req.admission_term if req.role == "student" else None,
+        role=req.role,
     )
     db.add(user)
     db.commit()
@@ -149,7 +164,7 @@ def director_create_user(
         first_name=req.first_name,
         last_name=req.last_name,
         role=req.role,
-        admission_term=req.admission_term,
+        admission_term=req.admission_term if req.role == "student" else None,
     )
     db.add(user)
     db.commit()
@@ -169,7 +184,7 @@ def profile_complete(current_user: User = Depends(get_current_user)):
         missing.append("first_name")
     if not current_user.last_name:
         missing.append("last_name")
-    if not current_user.personal_number:
+    if current_user.role == "student" and not current_user.personal_number:
         missing.append("personal_number")
     return {"complete": len(missing) == 0, "missing": missing}
 
@@ -193,7 +208,6 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
-
 
 
 @router.post("/me/password")

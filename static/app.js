@@ -306,6 +306,13 @@ function registerFormHtml() {
     return `
         <h2>Create account</h2>
         <div class="field">
+            <label>I am a</label>
+            <select id="register-role" onchange="onRegisterRoleChange()">
+                <option value="student">Student</option>
+                <option value="director">Director</option>
+            </select>
+        </div>
+        <div class="field">
             <label>Email</label>
             <input id="register-email" type="email">
         </div>
@@ -322,17 +329,36 @@ function registerFormHtml() {
             <label>Last name</label>
             <input id="register-last-name" type="text">
         </div>
-        <div class="field">
-            <label>Personal number (YYYYMMDD-XXXX)</label>
-            <input id="register-personal-number" type="text">
+        <div id="student-fields">
+            <div class="field">
+                <label>Personal number (YYYYMMDD-XXXX)</label>
+                <input id="register-personal-number" type="text">
+            </div>
+            <div class="field">
+                <label>Admission term</label>
+                <select id="register-admission-term">${admissionTermOptions()}</select>
+            </div>
         </div>
-        <div class="field">
-            <label>Admission term</label>
-            <select id="register-admission-term">${admissionTermOptions()}</select>
+        <div class="field" id="director-secret-field" style="display:none">
+            <label>Director secret</label>
+            <input id="register-director-secret" type="password">
         </div>
         <button onclick="submitRegister()">Create account</button>
         <p style="margin-top:1rem">Already have an account? <a href="#" onclick="toggleRegister()">Sign in</a></p>
     `;
+}
+
+function onRegisterRoleChange() {
+    const role = document.getElementById('register-role').value;
+    const studentFields = document.getElementById('student-fields');
+    const secretField = document.getElementById('director-secret-field');
+    if (role === 'director') {
+        studentFields.style.display = 'none';
+        secretField.style.display = 'block';
+    } else {
+        studentFields.style.display = 'block';
+        secretField.style.display = 'none';
+    }
 }
 
 function toggleRegister() {
@@ -358,17 +384,25 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
+    const role = document.getElementById('register-role').value;
     const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
     const first_name = document.getElementById('register-first-name').value.trim();
     const last_name = document.getElementById('register-last-name').value.trim();
-    const personal_number = document.getElementById('register-personal-number').value.trim();
-    const admission_term = document.getElementById('register-admission-term').value;
+
+    const body = { email, password, first_name, last_name, role };
+
+    if (role === 'student') {
+        body.personal_number = document.getElementById('register-personal-number').value.trim();
+        body.admission_term = document.getElementById('register-admission-term').value;
+    } else if (role === 'director') {
+        body.director_secret = document.getElementById('register-director-secret').value;
+    }
 
     try {
         const data = await api('/auth/register', {
             method: 'POST',
-            body: { email, password, first_name, last_name, personal_number, admission_term }
+            body,
         });
         setToken(data.access_token);
         currentUser = data.user;
@@ -377,6 +411,7 @@ async function submitRegister() {
         document.getElementById('login-error').textContent = e.message;
     }
 }
+
 
 function logout() {
     clearToken();
