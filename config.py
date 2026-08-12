@@ -22,3 +22,6 @@ DIRECTOR_EMAILS = [
 
 ENABLE_TEST_LOGIN = os.getenv("ENABLE_TEST_LOGIN", "false").lower() == "true"
 EMAIL_ENABLED = os.getenv("EMAIL_ENABLED", "false").lower() in ("true", "1", "yes")
+
+# Director secret for creating accounts without personal number validation
+DIRECTOR_ACCOUNT_SECRET = os.getenv("DIRECTOR_ACCOUNT_SECRET", "")

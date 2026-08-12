@@ -76,10 +76,10 @@ def create_plan(
         raise HTTPException(status_code=400, detail="You already have a study plan")
 
     db_plan = StudyPlan(
-        student_id=current_user.id,
-        title=plan.title,
-        admission_term=plan.admission_term,
+    student_id=current_user.id,
+    title=plan.title,
     )
+
     db.add(db_plan)
     db.commit()
     db.refresh(db_plan)
@@ -149,8 +149,6 @@ def get_version(
     previous_version_number = prev_version.version_number if prev_version else None
     diff_summary = (
         _diff_versions(prev_version.items, version.items)
-        if prev_version
-        else "First version."
     )
 
     return StudyPlanVersionWithDiff(
@@ -192,7 +190,6 @@ def update_plan(
 
     plan.current_version = new_version_number
     plan.title = plan_update.title
-    plan.admission_term = plan_update.admission_term
     plan.status = "draft"
     plan.updated_at = datetime.utcnow()
 
@@ -333,8 +330,8 @@ def export_term_csv(
         course_codes.update(student_course_codes)
 
         admission_year = ""
-        if plan.admission_term:
-            parts = plan.admission_term.split()
+        if plan.student.admission_term:
+            parts = plan.student.admission_term.split()
             if parts:
                 admission_year = parts[-1]
 

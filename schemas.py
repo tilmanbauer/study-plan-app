@@ -9,6 +9,7 @@ class UserOut(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     personal_number: Optional[str] = None
+    admission_term: Optional[str] = None
     role: str
     tuition_paying: bool = False
     registration_complete: bool = False
@@ -21,6 +22,7 @@ class UserProfileUpdate(BaseModel):
     first_name: str
     last_name: str
     personal_number: str
+    admission_term: str
 
 
 class CourseCreate(BaseModel):
@@ -102,13 +104,11 @@ class CommentCreate(BaseModel):
 
 class StudyPlanCreate(BaseModel):
     title: Optional[str] = None
-    admission_term: Optional[str] = None
     items: List[StudyPlanItemIn]
 
 
 class StudyPlanUpdate(BaseModel):
     title: Optional[str] = None
-    admission_term: Optional[str] = None
     items: List[StudyPlanItemIn]
 
 
@@ -116,7 +116,6 @@ class StudyPlanOut(BaseModel):
     id: int
     student_id: int
     title: Optional[str]
-    admission_term: Optional[str]
     status: str
     current_version: int
     created_at: datetime

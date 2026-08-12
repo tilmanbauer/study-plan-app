@@ -16,6 +16,7 @@ const TOTAL_CREDITS = 120;
 
 let currentUser = null;
 let courses = [];
+let showRegister = false;
 
 function statusLabel(status) {
     return STATUS_LABELS[status] || status;
@@ -90,9 +91,125 @@ async function api(path, options = {}) {
     return res.status === 204 ? null : res.json();
 }
 
+async function renderUserAdmin() {
+    const users = await api('/auth/users');
+    const rows = users.map(u => `
+        <tr>
+            <td>${escapeHtml(formatUserName(u))}</td>
+            <td>${escapeHtml(u.email)}</td>
+            <td>${escapeHtml(u.role)}</td>
+            <td>${u.is_active ? 'Active' : 'Closed'}</td>
+            <td>
+                ${u.role === 'student' ? `<button class="danger" onclick="closeAccount(${u.id})">Close</button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('main').innerHTML = `
+        <div class="card">
+            <h2>Account Management</h2>
+            <h3>Create Account</h3>
+            <div class="form-row">
+                <input id="new-user-email" type="email" placeholder="Email">
+                <input id="new-user-password" type="password" placeholder="Password">
+                <input id="new-user-first-name" type="text" placeholder="First name">
+                <input id="new-user-last-name" type="text" placeholder="Last name">
+                <select id="new-user-role">
+                    <option value="student">Student</option>
+                    <option value="director">Director</option>
+                </select>
+                <input id="new-user-admission-term" type="text" placeholder="Admission term (optional)">
+                <input id="new-user-secret" type="password" placeholder="Director secret">
+                <button onclick="createUser()">Create</button>
+            </div>
+            <h3>All Accounts</h3>
+            <table>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="5">No accounts.</td></tr>'}</tbody>
+            </table>
+            <div class="actions">
+                <button class="secondary" onclick="renderApp()">Back</button>
+            </div>
+        </div>
+    `;
+}
+
+async function renderAccountAdminInline() {
+    const container = document.getElementById('account-admin-container');
+    if (!container) return;
+    const users = await api('/auth/users');
+    const rows = users.map(u => `
+        <tr>
+            <td>${escapeHtml(formatUserName(u))}</td>
+            <td>${escapeHtml(u.email)}</td>
+            <td>${escapeHtml(u.role)}</td>
+            <td>${u.is_active ? 'Active' : 'Closed'}</td>
+            <td>
+                ${u.role === 'student' ? `<button class="danger" onclick="closeAccount(${u.id})">Close</button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <h3>Create Account</h3>
+        <div class="form-row">
+            <input id="new-user-email" type="email" placeholder="Email">
+            <input id="new-user-password" type="password" placeholder="Password">
+            <input id="new-user-first-name" type="text" placeholder="First name">
+            <input id="new-user-last-name" type="text" placeholder="Last name">
+            <select id="new-user-role">
+                <option value="student">Student</option>
+                <option value="director">Director</option>
+            </select>
+            <input id="new-user-admission-term" type="text" placeholder="Admission term (optional)">
+            <input id="new-user-secret" type="password" placeholder="Director secret">
+            <button onclick="createUser()">Create</button>
+        </div>
+        <h3 style="margin-top:1.5rem">All Accounts</h3>
+        <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="5">No accounts.</td></tr>'}</tbody>
+        </table>
+    `;
+}
+
+async function createUser() {
+    const email = document.getElementById('new-user-email').value.trim();
+    const password = document.getElementById('new-user-password').value;
+    const first_name = document.getElementById('new-user-first-name').value.trim();
+    const last_name = document.getElementById('new-user-last-name').value.trim();
+    const role = document.getElementById('new-user-role').value;
+    const admission_term = document.getElementById('new-user-admission-term').value.trim();
+    const director_secret = document.getElementById('new-user-secret').value;
+
+    try {
+        await api('/auth/director/users', {
+            method: 'POST',
+            body: { email, password, first_name, last_name, role, admission_term, director_secret }
+        });
+        if (document.getElementById('account-admin-container')) {
+            renderAccountAdminInline();
+        } else {
+            renderUserAdmin();
+        }
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function closeAccount(userId) {
+    if (!confirm('Close this account? The user will no longer be able to sign in.')) return;
+    await api(`/auth/users/${userId}`, { method: 'DELETE' });
+    if (document.getElementById('account-admin-container')) {
+        renderAccountAdminInline();
+    } else {
+        renderUserAdmin();
+    }
+}
+
 async function init() {
     if (!getToken()) {
-        loadLoginOptions();
+        renderLogin();
         return;
     }
     try {
@@ -108,7 +225,7 @@ async function init() {
     } catch (e) {
         console.error('init failed:', e);
         clearToken();
-        loadLoginOptions();
+        renderLogin();
     }
 }
 
@@ -118,46 +235,39 @@ function renderProfileCompletion(missing) {
         <div class="card">
             <h2>Complete your profile</h2>
             <p>Please provide the following information before creating your study plan.</p>
-            <div style="margin-bottom:0.75rem">
-                <label style="display:block;margin-bottom:0.25rem">First name</label>
-                <input id="first-name" type="text" style="width:100%;max-width:300px">
+            <div class="field">
+                <label>First name</label>
+                <input id="first-name" type="text" value="${escapeHtml(currentUser.first_name || '')}">
             </div>
-            <div style="margin-bottom:0.75rem">
-                <label style="display:block;margin-bottom:0.25rem">Last name</label>
-                <input id="last-name" type="text" style="width:100%;max-width:300px">
+            <div class="field">
+                <label>Last name</label>
+                <input id="last-name" type="text" value="${escapeHtml(currentUser.last_name || '')}">
             </div>
-            <div style="margin-bottom:0.75rem">
-                <label style="display:block;margin-bottom:0.25rem">Personal number (YYYYMMDD-XXXX)</label>
-                <input id="personal-number" type="text" style="width:100%;max-width:300px">
+            <div class="field">
+                <label>Personal number (YYYYMMDD-XXXX)</label>
+                <input id="personal-number" type="text" value="${escapeHtml(currentUser.personal_number || '')}">
+            </div>
+            <div class="field">
+                <label>Admission term</label>
+                <select id="admission-term">${admissionTermOptions(currentUser.admission_term)}</select>
             </div>
             <button onclick="submitProfile()">Save</button>
-            <button class="secondary" onclick="clearToken(); loadLoginOptions();">Cancel / Log out</button>
             <div id="profile-error" style="color:var(--danger);margin-top:0.5rem"></div>
         </div>
     `;
 }
 
-
-
 async function submitProfile() {
     const first_name = document.getElementById('first-name').value.trim();
     const last_name = document.getElementById('last-name').value.trim();
     const personal_number = document.getElementById('personal-number').value.trim();
+    const admission_term = document.getElementById('admission-term').value;
 
     try {
-        const res = await fetch('/auth/me', {
+        currentUser = await api('/auth/me', {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getToken()}`
-            },
-            body: JSON.stringify({ first_name, last_name, personal_number })
+            body: { first_name, last_name, personal_number, admission_term }
         });
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.detail || 'Failed to save profile');
-        }
-        currentUser = await res.json();
         courses = await api('/courses');
         renderApp();
     } catch (e) {
@@ -165,65 +275,102 @@ async function submitProfile() {
     }
 }
 
-let testAccounts = [];
-
-async function loadLoginOptions() {
-    try {
-        const res = await fetch('/auth/test-login-enabled');
-        const data = await res.json();
-        if (data.enabled) {
-            testAccounts = [
-                { email: 'student1@example.com', name: 'Test Student 1', role: 'student' },
-                { email: 'student2@example.com', name: 'Test Student 2', role: 'student' },
-                { email: 'student3@example.com', name: 'Test Student 3', role: 'student' },
-                { email: 'director@example.com', name: 'Test Director', role: 'director' },
-            ];
-        }
-    } catch (e) {
-        console.error('Failed to load test login options:', e);
-        testAccounts = [];
-    }
-    renderLogin();
-}
-
 function renderLogin() {
-    const testButtons = testAccounts.map(acc => `
-        <button class="secondary" onclick="loginAsTest('${acc.email}')">
-            ${acc.name} (${acc.role})
-        </button>
-    `).join('');
-
+    const form = showRegister ? registerFormHtml() : loginFormHtml();
     document.getElementById('user-bar').innerHTML = '';
     document.getElementById('main').innerHTML = `
         <div class="card" id="login-form">
-            <h2>Sign in</h2>
-            <button onclick="loginWithKTH()">Sign in with KTH</button>
-            ${testAccounts.length ? `
-                <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
-                <p class="demo-hint">Test accounts (development only):</p>
-                <div style="display:flex;flex-direction:column;gap:0.5rem">
-                    ${testButtons}
-                </div>
-            ` : ''}
+            ${form}
             <div id="login-error" style="color:var(--danger);margin-top:0.5rem"></div>
         </div>
     `;
 }
 
-function loginWithKTH() {
-    window.location.href = '/auth/oidc/login';
+function loginFormHtml() {
+    return `
+        <h2>Sign in</h2>
+        <div class="field">
+            <label>Email</label>
+            <input id="login-email" type="email">
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <input id="login-password" type="password">
+        </div>
+        <button onclick="submitLogin()">Sign in</button>
+        <p style="margin-top:1rem">No account? <a href="#" onclick="toggleRegister()">Create one</a></p>
+    `;
 }
 
-async function loginAsTest(email) {
+function registerFormHtml() {
+    return `
+        <h2>Create account</h2>
+        <div class="field">
+            <label>Email</label>
+            <input id="register-email" type="email">
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <input id="register-password" type="password">
+            <small>At least 10 characters, with uppercase, lowercase, digit, and special character.</small>
+        </div>
+        <div class="field">
+            <label>First name</label>
+            <input id="register-first-name" type="text">
+        </div>
+        <div class="field">
+            <label>Last name</label>
+            <input id="register-last-name" type="text">
+        </div>
+        <div class="field">
+            <label>Personal number (YYYYMMDD-XXXX)</label>
+            <input id="register-personal-number" type="text">
+        </div>
+        <div class="field">
+            <label>Admission term</label>
+            <select id="register-admission-term">${admissionTermOptions()}</select>
+        </div>
+        <button onclick="submitRegister()">Create account</button>
+        <p style="margin-top:1rem">Already have an account? <a href="#" onclick="toggleRegister()">Sign in</a></p>
+    `;
+}
+
+function toggleRegister() {
+    showRegister = !showRegister;
+    renderLogin();
+}
+
+async function submitLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
     try {
-        const res = await fetch('/auth/test-login', {
+        const data = await api('/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
+            body: { email, password }
         });
-        if (!res.ok) throw new Error('Test login failed');
-        const data = await res.json();
-        localStorage.setItem('token', data.access_token);
+        setToken(data.access_token);
+        currentUser = data.user;
+        init();
+    } catch (e) {
+        document.getElementById('login-error').textContent = e.message;
+    }
+}
+
+async function submitRegister() {
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const first_name = document.getElementById('register-first-name').value.trim();
+    const last_name = document.getElementById('register-last-name').value.trim();
+    const personal_number = document.getElementById('register-personal-number').value.trim();
+    const admission_term = document.getElementById('register-admission-term').value;
+
+    try {
+        const data = await api('/auth/register', {
+            method: 'POST',
+            body: { email, password, first_name, last_name, personal_number, admission_term }
+        });
+        setToken(data.access_token);
         currentUser = data.user;
         init();
     } catch (e) {
@@ -246,12 +393,13 @@ function renderApp() {
     else renderDirector();
 }
 
-function admissionTermOptions() {
+function admissionTermOptions(selected = '') {
     const year = new Date().getFullYear();
     let opts = '<option value="">-- select admission term --</option>';
     for (let y = year - 1; y <= year + 3; y++) {
-        opts += `<option value="Fall ${y}">Fall ${y}</option>`;
-        opts += `<option value="Spring ${y}">Spring ${y}</option>`;
+        const fallSelected = selected === `Fall ${y}` ? 'selected' : '';
+        const springSelected = selected === `Spring ${y}` ? 'selected' : '';
+        opts += `<option value="Fall ${y}" ${fallSelected}>Fall ${y}</option><option value="Spring ${y}" ${springSelected}>Spring ${y}</option>`;
     }
     return opts;
 }
@@ -371,10 +519,9 @@ function updateTermCredits(term) {
 function updateTotalProgress() {
     const totalEl = document.getElementById('total-progress');
     if (!totalEl) return;
-    const admissionTerm = document.getElementById('admission-term').value;
     let total = 0;
-    if (admissionTerm) {
-        getPlanTerms(admissionTerm).forEach(term => {
+    if (currentUser.admission_term) {
+        getPlanTerms(currentUser.admission_term).forEach(term => {
             total += calculateTermCreditsFromDom(term);
         });
     }
@@ -480,10 +627,10 @@ function termCardHtml(term) {
 }
 
 function renderTermSections() {
-    const term = document.getElementById('admission-term').value;
+    const term = currentUser.admission_term;
     const container = document.getElementById('term-sections');
     if (!term) {
-        container.innerHTML = '<p class="empty-term-hint">Select an admission term to start planning</p>';
+        container.innerHTML = '<p class="empty-term-hint">Please complete your profile with an admission term.</p>';
         updateTotalProgress();
         return;
     }
@@ -496,12 +643,7 @@ function newPlan() {
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>New Study Plan</h2>
-            <div class="field">
-                <label for="admission-term">Admission term</label>
-                <select id="admission-term" onchange="renderTermSections()">
-                    ${admissionTermOptions()}
-                </select>
-            </div>
+            <p>Admission term: <strong>${escapeHtml(currentUser.admission_term || '-')}</strong></p>
             <div id="term-sections"></div>
             <div id="total-progress"></div>
             <div class="actions">
@@ -509,6 +651,9 @@ function newPlan() {
             </div>
         </div>
     `;
+    if (currentUser.admission_term) {
+        renderTermSections();
+    }
 }
 
 let editingPlanId = null;
@@ -517,7 +662,7 @@ async function editPlan(planId) {
     const plan = await api(`/plans/${planId}`);
     editingPlanId = planId;
     const latest = plan.versions[0];
-    const admissionTerm = plan.admission_term;
+    const admissionTerm = plan.student.admission_term;
 
     const itemsByTerm = {};
     getPlanTerms(admissionTerm).forEach(t => itemsByTerm[t] = []);
@@ -530,12 +675,7 @@ async function editPlan(planId) {
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>Edit Study Plan</h2>
-            <div class="field">
-                <label for="admission-term">Admission term</label>
-                <select id="admission-term" onchange="renderTermSections()">
-                    ${admissionTermOptions()}
-                </select>
-            </div>
+            <p>Admission term: <strong>${escapeHtml(admissionTerm || '-')}</strong></p>
             <div id="term-sections"></div>
             <div id="total-progress"></div>
             <div class="actions">
@@ -545,7 +685,6 @@ async function editPlan(planId) {
         </div>
     `;
 
-    document.getElementById('admission-term').value = admissionTerm;
     renderTermSections();
 
     getPlanTerms(admissionTerm).forEach(term => {
@@ -563,7 +702,7 @@ async function editPlan(planId) {
 function findDuplicateCourseCodes() {
     const usedCodes = {};
     const duplicates = new Set();
-    const admissionTerm = document.getElementById('admission-term').value;
+    const admissionTerm = currentUser.admission_term;
     if (!admissionTerm) return [];
 
     getPlanTerms(admissionTerm).forEach(term => {
@@ -636,10 +775,10 @@ function collectPlanItems(admissionTerm) {
 }
 
 async function savePlan(isUpdate) {
-    const admissionTerm = document.getElementById('admission-term').value;
+    const admissionTerm = currentUser.admission_term;
 
     if (!admissionTerm) {
-        alert('Please select an admission term.');
+        alert('Please complete your profile with an admission term.');
         return;
     }
 
@@ -653,12 +792,12 @@ async function savePlan(isUpdate) {
     if (isUpdate) {
         await api(`/plans/${editingPlanId}/update`, {
             method: 'POST',
-            body: { title: null, admission_term: admissionTerm, items },
+            body: { title: null, items },
         });
     } else {
         await api('/plans', {
             method: 'POST',
-            body: { title: null, admission_term: admissionTerm, items },
+            body: { title: null, items },
         });
     }
     renderApp();
@@ -734,25 +873,23 @@ function renderPlanView(plan, version, isLatest) {
         : '';
 
     const flags = currentUser.role === 'director' && plan.student
-    ? `<div class="flag-list">
-         <label class="flag-item"><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> <span>Tuition paying</span></label>
-         <label class="flag-item"><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> <span>Registration complete</span></label>
-         <span id="flag-save-status"></span>
-       </div>`
-    : `<span class="flag-badge">${plan.student.tuition_paying ? 'Tuition paying' : 'No tuition'}</span>
-       <span class="flag-badge">${plan.student.registration_complete ? 'Registered' : 'Not registered'}</span>`;
-
+        ? `<div class="flag-list">
+             <label class="flag-item"><input type="checkbox" id="tuition-paying" onchange="saveDirectorFlags(${plan.student.id})"> <span>Tuition paying</span></label>
+             <label class="flag-item"><input type="checkbox" id="registration-complete" onchange="saveDirectorFlags(${plan.student.id})"> <span>Registration complete</span></label>
+             <span id="flag-save-status"></span>
+           </div>`
+        : `<span class="flag-badge">${plan.student.tuition_paying ? 'Tuition paying' : 'No tuition'}</span>
+           <span class="flag-badge">${plan.student.registration_complete ? 'Registered' : 'Not registered'}</span>`;
 
     const header = `
-    <div class="plan-header">
-        <span class="header-value">${escapeHtml(formatUserName(plan.student))}</span>
-        <span class="header-value">adm. ${plan.admission_term || '-'}</span>
-        <span class="flags">${flags}</span>
-        <span class="header-value"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
-        <span class="version-badge">v${plan.current_version}</span>
-    </div>
-`;
-
+        <div class="plan-header">
+            <span class="header-value">${escapeHtml(formatUserName(plan.student))}</span>
+            <span class="header-value">adm. ${plan.student.admission_term || '-'}</span>
+            <span class="flags">${flags}</span>
+            <span class="header-value"><span class="status ${plan.status}">${statusLabel(plan.status)}</span></span>
+            <span class="version-badge">v${plan.current_version}</span>
+        </div>
+    `;
 
     let actions = `<button class="secondary" onclick="renderApp()">Back</button>`;
 
@@ -799,13 +936,12 @@ function renderPlanView(plan, version, isLatest) {
             ${header}
             ${diff}
             <h3>Courses</h3>
-            ${itemsByTermHtml(plan.admission_term, version.items)}
+            ${itemsByTermHtml(plan.student.admission_term, version.items)}
             <div class="actions">${actions}</div>
         </div>
         ${commentBox}
     `;
 }
-
 
 async function saveDirectorFlags(userId) {
     const tuition_paying = document.getElementById('tuition-paying').checked;
@@ -821,7 +957,6 @@ async function saveDirectorFlags(userId) {
     }
 }
 
-
 async function loadDirectorFlags(userId) {
     const user = await api(`/auth/users/${userId}/director-flags`);
     const tuitionBox = document.getElementById('tuition-paying');
@@ -829,10 +964,6 @@ async function loadDirectorFlags(userId) {
     if (tuitionBox) tuitionBox.checked = user.tuition_paying;
     if (registrationBox) registrationBox.checked = user.registration_complete;
 }
-
-
-
-
 
 async function viewPlan(planId, versionNumber) {
     const plan = await api(`/plans/${planId}`);
@@ -844,7 +975,6 @@ async function viewPlan(planId, versionNumber) {
         loadDirectorFlags(plan.student.id);
     }
 }
-
 
 async function renderStudent() {
     const plans = await api('/plans');
@@ -868,8 +998,8 @@ async function renderStudent() {
     document.getElementById('main').innerHTML = `
         <div class="card">
             <h2>Study Plan</h2>
-            <p>Admission term: ${plan.admission_term || '-'} • Status: <span class="status ${plan.status}">${statusLabel(plan.status)}</span> • Version ${latest.version_number}</p>
-            ${itemsByTermHtml(plan.admission_term, latest.items)}
+            <p>Admission term: ${plan.student.admission_term || '-'} • Status: <span class="status ${plan.status}">${statusLabel(plan.status)}</span> • Version ${latest.version_number}</p>
+            ${itemsByTermHtml(plan.student.admission_term, latest.items)}
             <div class="actions">
                 ${canEdit ? `<button onclick="editPlan(${plan.id})">${plan.status === 'approved' ? 'Update' : 'Edit'}</button>` : ''}
                 ${canSubmit ? `<button class="success" onclick="submitPlan(${plan.id})">Submit for Approval</button>` : ''}
@@ -928,7 +1058,7 @@ async function renderDirector() {
     const planRows = plans.map(p => `
         <tr>
             <td>${escapeHtml(formatUserName(p.student))}</td>
-            <td>${p.admission_term || '-'}</td>
+            <td>${p.student.admission_term || '-'}</td>
             <td><span class="status ${p.status}">${statusLabel(p.status)}</span></td>
             <td>v${p.current_version}</td>
             <td>${new Date(p.updated_at).toLocaleDateString()}</td>
@@ -938,8 +1068,8 @@ async function renderDirector() {
 
     const terms = new Set();
     plans.forEach(p => {
-        if (p.admission_term) {
-            getPlanTerms(p.admission_term).forEach(t => terms.add(t));
+        if (p.student.admission_term) {
+            getPlanTerms(p.student.admission_term).forEach(t => terms.add(t));
         }
     });
     const termOptions = Array.from(terms).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
@@ -951,6 +1081,7 @@ async function renderDirector() {
                 <button class="tab active" onclick="switchTab('plans')" id="tab-plans">Study Plans</button>
                 <button class="tab" onclick="switchTab('courses')" id="tab-courses">Courses</button>
                 <button class="tab" onclick="switchTab('registrations')" id="tab-registrations">Registrations</button>
+                <button class="tab" onclick="switchTab('accounts')" id="tab-accounts">Accounts</button>
             </div>
 
             <div id="tab-content-plans" class="tab-content active">
@@ -975,6 +1106,10 @@ async function renderDirector() {
                     <button onclick="exportSelectedTerm()">Download CSV</button>
                 </div>
                 <p>Select a term and download the full registration matrix.</p>
+            </div>
+
+            <div id="tab-content-accounts" class="tab-content" style="display:none">
+                <div id="account-admin-container"></div>
             </div>
         </div>
     `;
@@ -1026,15 +1161,18 @@ async function renderCourseAdminInline() {
     `;
 }
 
-
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
     document.getElementById(`tab-${name}`).classList.add('active');
     document.getElementById(`tab-content-${name}`).style.display = 'block';
+
+    if (name === 'accounts') {
+        renderAccountAdminInline();
+    } else if (name === 'courses') {
+        renderCourseAdminInline();
+    }
 }
-
-
 
 async function exportTermCsv(term) {
     const token = getToken();
@@ -1155,6 +1293,5 @@ async function importCourseCsv() {
     alert('Import successful');
     await renderCourseAdminInline();
 }
-
 
 init();
