@@ -17,6 +17,7 @@ from auth import (
 )
 from config import DIRECTOR_ACCOUNT_SECRET
 from utils import validate_personal_number
+from typing import List 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -261,3 +262,11 @@ def update_director_flags(
     db.commit()
     db.refresh(user)
     return user
+
+@router.get("/users", response_model=List[UserOut])
+def list_users(
+    current_user: User = Depends(require_role("director")),
+    db: Session = Depends(get_db),
+):
+    return db.query(User).all()
+

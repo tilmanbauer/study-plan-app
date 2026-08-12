@@ -1182,8 +1182,8 @@ async function renderCourseAdminInline() {
         <h3 style="margin-top:1.5rem">Bulk Upload CSV</h3>
         <p>Upload a CSV with columns: university, code, title, credits, term</p>
         <div class="course-entry-row">
-            <input type="file" id="course-file" accept=".csv">
-            <button onclick="importCoursesCsv()">Upload</button>
+            <input type="file" id="course-csv" accept=".csv">
+            <button onclick="importCourseCsv()">Upload</button>
         </div>
 
         <h3 style="margin-top:1.5rem">All Courses</h3>
@@ -1195,6 +1195,7 @@ async function renderCourseAdminInline() {
         </table>
     `;
 }
+
 
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1239,45 +1240,6 @@ function exportSelectedTerm() {
     exportTermCsv(term);
 }
 
-async function renderCourseAdmin() {
-    courses = await api('/courses');
-    const rows = courses.map(c => `
-        <tr>
-            <td>${escapeHtml(c.university)}</td>
-            <td>${escapeHtml(c.code)}</td>
-            <td>${escapeHtml(c.title)}</td>
-            <td>${c.credits}</td>
-            <td>${escapeHtml(c.term)}</td>
-            <td><button class="secondary" onclick="deleteCourse(${c.id})">Delete</button></td>
-        </tr>
-    `).join('');
-
-    document.getElementById('main').innerHTML = `
-        <div class="card">
-            <h2>Course Administration</h2>
-            <h3>Add Course</h3>
-            <div class="form-row">
-                <input id="course-university" placeholder="University (KTH/SU)">
-                <input id="course-code" placeholder="Code">
-                <input id="course-title" placeholder="Title">
-                <input id="course-credits" type="number" placeholder="Credits">
-                <input id="course-term" placeholder="Term (e.g. Fall 2026)">
-                <button onclick="addCourse()">Add</button>
-            </div>
-            <h3>Import CSV</h3>
-            <input type="file" id="course-csv" accept=".csv">
-            <button onclick="importCourseCsv()">Import</button>
-            <h3>All Courses</h3>
-            <table>
-                <thead><tr><th>University</th><th>Code</th><th>Title</th><th>Credits</th><th>Term</th><th>Actions</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="6">No courses.</td></tr>'}</tbody>
-            </table>
-            <div class="actions">
-                <button class="secondary" onclick="renderApp()">Back</button>
-            </div>
-        </div>
-    `;
-}
 
 async function addCourse() {
     const university = document.getElementById('course-university').value.trim();
@@ -1295,17 +1257,17 @@ async function addCourse() {
         method: 'POST',
         body: { university, code, title, credits, term },
     });
-    renderCourseAdmin();
+    renderCourseAdminInline();
 }
 
 async function deleteCourse(courseId) {
     if (!confirm('Delete this course?')) return;
     await api(`/admin/courses/${courseId}`, { method: 'DELETE' });
-    renderCourseAdmin();
+    renderCourseAdminInline();
 }
 
 async function importCourseCsv() {
-    const input = document.getElementById('course-file');
+    const input = document.getElementById('course-csv');
     if (!input.files.length) {
         alert('Please select a CSV file.');
         return;
@@ -1326,7 +1288,9 @@ async function importCourseCsv() {
         return;
     }
     alert('Import successful');
+    courses = await api('/courses');
     await renderCourseAdminInline();
 }
+
 
 init();
