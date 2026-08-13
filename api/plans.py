@@ -149,6 +149,8 @@ def get_version(
     previous_version_number = prev_version.version_number if prev_version else None
     diff_summary = (
         _diff_versions(prev_version.items, version.items)
+        if previous_version
+        else None
     )
 
     return StudyPlanVersionWithDiff(
