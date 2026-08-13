@@ -1137,6 +1137,7 @@ async function printPlan(planId) {
     const plan = await api(`/plans/${planId}`);
     const latest = plan.versions[0];
     const win = window.open('', '_blank');
+    win.document.title='Test test';
     win.document.write(generatePrintHtml(plan, latest));
     win.document.close();
     setTimeout(() => win.print(), 300);
