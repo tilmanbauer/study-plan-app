@@ -1156,7 +1156,7 @@ function generatePrintHtml(plan, version) {
         ? `${String(admissionYear).slice(-2)}${String(graduationYear).slice(-2)}`
         : '';
     const lastEdit = plan.updated_at ? new Date(plan.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const filename = `${yearSpan}-${(student.last_name || '').toUpperCase()}-${(student.first_name || '').toUpperCase()}-${lastEdit}`;
+    const filename = `${yearSpan}_${(student.last_name || '').toUpperCase()}_${(student.first_name || '').toUpperCase()}-${lastEdit}`;
 
     const today = new Date().toLocaleDateString();
 
