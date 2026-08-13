@@ -1001,7 +1001,7 @@ function renderPlanView(plan, version, isLatest) {
         </div>
     `;
 
-    let actions = `<button class="secondary" onclick="renderApp()">Back</button>`;
+    let actions = `<button class="secondary" onclick="renderApp()">Back</button> <button class="secondary" onclick="printPlan(${plan.id})">Print</button>`;
 
     if (currentUser.role === 'student' && plan.student_id === currentUser.id) {
         const editBtn = isLatest && plan.status !== 'pending'
@@ -1113,7 +1113,9 @@ async function renderStudent() {
             <div class="actions">
                 ${canEdit ? `<button onclick="editPlan(${plan.id})">${plan.status === 'approved' ? 'Update' : 'Edit'}</button>` : ''}
                 ${canSubmit ? `<button class="success" onclick="submitPlan(${plan.id})">Submit for Approval</button>` : ''}
+                <button class="secondary" onclick="printPlan(${plan.id})">Print</button>
             </div>
+
         </div>
         <div class="card">
             <h3>Comments & Feedback</h3>
@@ -1129,6 +1131,142 @@ async function renderStudent() {
 async function submitPlan(planId) {
     await api(`/plans/${planId}/submit`, { method: 'POST' });
     renderApp();
+}
+
+async function printPlan(planId) {
+    const plan = await api(`/plans/${planId}`);
+    const latest = plan.versions[0];
+    const win = window.open('', '_blank');
+    win.document.write(generatePrintHtml(plan, latest));
+    win.document.close();
+    setTimeout(() => win.print(), 300);
+}
+
+function generatePrintHtml(plan, version) {
+    const student = plan.student;
+    const admissionYear = student.admission_term ? student.admission_term.split(' ').pop() : '';
+    const today = new Date().toLocaleDateString();
+
+    const terms = getPlanTerms(student.admission_term);
+    const termLabels = ['A', 'B', 'C', 'D'];
+    const termHeaders = [
+        `A. On-going courses I intend to complete (${terms[0] || 'Autumn Term'})`,
+        `B. Intended Future courses (${terms[1] || 'Spring term'})`,
+        `C. Intended Future courses (${terms[2] || 'Fall term'})`,
+        `D. Intended Future courses (${terms[3] || 'Spring term'}): Reserved for the degree project if you are still in phase with your studies`,
+    ];
+
+    const grouped = {};
+    terms.forEach(t => grouped[t] = []);
+    version.items.forEach(item => {
+        const term = item.term || terms[0];
+        if (!grouped[term]) grouped[term] = [];
+        grouped[term].push(item);
+    });
+
+    const termTables = terms.map((term, idx) => {
+        const rows = (grouped[term] || []).map(item => `
+            <tr>
+                <td>${getItemCredits(item)}</td>
+                <td>${escapeHtml(item.course ? item.course.code : (item.custom_code || ''))}</td>
+                <td>${escapeHtml(item.course ? item.course.title : (item.custom_title || ''))}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        `).join('');
+
+        return `
+            <div class="print-section">
+                <div class="print-section-title">${termHeaders[idx]}</div>
+                <table class="print-courses">
+                    <thead>
+                        <tr>
+                            <th style="width:10%">ECTS</th>
+                            <th style="width:20%">Course code</th>
+                            <th style="width:50%">Course name</th>
+                            <th style="width:7%">B</th>
+                            <th style="width:7%">P</th>
+                            <th style="width:6%">X</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows || '<tr><td colspan="6" style="text-align:center">No courses selected</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Individual Study Plan</title>
+            <style>
+                @page { size: A4; margin: 1.5cm; }
+                body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; }
+                .print-header { text-align: center; margin-bottom: 1.5rem; }
+                .print-header h1 { font-size: 16pt; margin: 0; }
+                .print-header h2 { font-size: 13pt; margin: 0.2rem 0; font-weight: normal; }
+                .print-header h3 { font-size: 12pt; margin: 0.2rem 0; font-weight: bold; }
+                .print-info { width: 100%; margin-bottom: 1.5rem; border-collapse: collapse; }
+                .print-info td { padding: 0.3rem 0; border: none; }
+                .print-info td:first-child { width: 25%; font-weight: bold; }
+                .print-info td:last-child { border-bottom: 1px solid #000; width: 75%; }
+                .print-section { margin-bottom: 1rem; }
+                .print-section-title { font-weight: bold; margin-bottom: 0.3rem; }
+                .print-courses { width: 100%; border-collapse: collapse; margin-bottom: 0.5rem; }
+                .print-courses th, .print-courses td { border: 1px solid #000; padding: 0.3rem; text-align: left; }
+                .print-courses th { background: #eee; }
+                .print-note { margin-top: 1rem; font-size: 10pt; }
+                .print-signature { margin-top: 2rem; }
+                .print-signature td { padding: 0.5rem 0; border: none; }
+                .print-signature .line { border-bottom: 1px solid #000; width: 60%; }
+                @media print {
+                    body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <h1>Course Application Form</h1>
+                <h2>Master’s Program in Mathematics 26-28</h2>
+                <h3>Individual Study plan</h3>
+            </div>
+
+            <table class="print-info">
+                <tr><td>Last name:</td><td>${escapeHtml(student.last_name || '')}</td></tr>
+                <tr><td>First name:</td><td>${escapeHtml(student.first_name || '')}</td></tr>
+                <tr><td>Personal number:</td><td>${escapeHtml(student.personal_number || '')}</td></tr>
+                <tr><td>E-mail:</td><td>${escapeHtml(student.email || '')}</td></tr>
+                <tr><td>Admission year:</td><td>${escapeHtml(admissionYear)}</td></tr>
+                <tr><td>Date:</td><td>${escapeHtml(today)}</td></tr>
+            </table>
+
+            ${termTables}
+
+            <div class="print-note">
+                On each term courses should not exceed 30 ECTS
+            </div>
+
+            <div class="print-note">
+                <strong>Other comments</strong>
+            </div>
+
+            <table class="print-signature">
+                <tr><td>Student signature:</td><td class="line"></td><td>Date:</td><td class="line"></td></tr>
+                <tr><td>Director signature:</td><td class="line"></td><td>Date:</td><td class="line"></td></tr>
+            </table>
+
+            <div class="no-print" style="text-align:center; margin-top:2rem;">
+                <button onclick="window.print()">Print</button>
+            </div>
+        </body>
+        </html>
+    `;
 }
 
 async function postComment(planId) {
