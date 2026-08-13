@@ -1137,19 +1137,30 @@ async function printPlan(planId) {
     const plan = await api(`/plans/${planId}`);
     const latest = plan.versions[0];
     const win = window.open('', '_blank');
-    win.document.title='Test test';
     win.document.write(generatePrintHtml(plan, latest));
     win.document.close();
-    setTimeout(() => win.print(), 300);
+    win.onload = () => {
+        win.print();
+    };
+    win.onafterprint = () => {
+        win.close();
+    };
 }
+
 
 function generatePrintHtml(plan, version) {
     const student = plan.student;
-    const admissionYear = student.admission_term ? student.admission_term.split(' ').pop() : '';
+    const admissionYear = student.admission_term ? parseInt(student.admission_term.split(' ').pop(), 10) : null;
+    const graduationYear = admissionYear ? admissionYear + 2 : null;
+    const yearSpan = admissionYear && graduationYear
+        ? `${String(admissionYear).slice(-2)}${String(graduationYear).slice(-2)}`
+        : '';
+    const lastEdit = plan.updated_at ? new Date(plan.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const filename = `${yearSpan}-${(student.last_name || '').toUpperCase()}-${(student.first_name || '').toUpperCase()}-${lastEdit}`;
+
     const today = new Date().toLocaleDateString();
 
     const terms = getPlanTerms(student.admission_term);
-    const termLabels = ['A', 'B', 'C', 'D'];
     const termHeaders = [
         `A. On-going courses I intend to complete (${terms[0] || 'Autumn Term'})`,
         `B. Intended Future courses (${terms[1] || 'Spring term'})`,
@@ -1204,7 +1215,7 @@ function generatePrintHtml(plan, version) {
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Individual Study Plan</title>
+            <title>${escapeHtml(filename)}</title>
             <style>
                 @page { size: A4; margin: 1.5cm; }
                 body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; }
@@ -1243,7 +1254,7 @@ function generatePrintHtml(plan, version) {
                 <tr><td>First name:</td><td>${escapeHtml(student.first_name || '')}</td></tr>
                 <tr><td>Personal number:</td><td>${escapeHtml(student.personal_number || '')}</td></tr>
                 <tr><td>E-mail:</td><td>${escapeHtml(student.email || '')}</td></tr>
-                <tr><td>Admission year:</td><td>${escapeHtml(admissionYear)}</td></tr>
+                <tr><td>Admission year:</td><td>${escapeHtml(admissionYear || '')}</td></tr>
                 <tr><td>Date:</td><td>${escapeHtml(today)}</td></tr>
             </table>
 
@@ -1265,10 +1276,21 @@ function generatePrintHtml(plan, version) {
             <div class="no-print" style="text-align:center; margin-top:2rem;">
                 <button onclick="window.print()">Print</button>
             </div>
+            <script>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 300);
+                };
+                window.onafterprint = function() {
+                    window.close();
+                };
+            </script>
         </body>
         </html>
     `;
 }
+
 
 async function postComment(planId) {
     const text = document.getElementById('comment-text').value;
