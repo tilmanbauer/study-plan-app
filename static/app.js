@@ -17,6 +17,7 @@ const TOTAL_CREDITS = 120;
 let currentUser = null;
 let courses = [];
 let showRegister = false;
+let justRegistered = false;
 
 function statusLabel(status) {
     return STATUS_LABELS[status] || status;
@@ -428,12 +429,64 @@ async function submitRegister() {
         });
         setToken(data.access_token);
         currentUser = data.user;
-        init();
+        justRegistered = true;
+        renderWelcome();
     } catch (e) {
         document.getElementById('login-error').textContent = e.message;
     }
 }
 
+
+function renderWelcome() {
+    document.getElementById('user-bar').innerHTML = '';
+    document.getElementById('main').innerHTML = `
+        <div class="card">
+            <h2>Welcome!</h2>
+            <p>Your account has been created successfully.</p>
+            <p>
+                In this system you can build and submit your study plan. Directors will review your plan
+                and may request changes or approve it. <strong>Please read the following information carefully</strong>.
+            </p>
+            <p>Registering to take a course is a three-step process: Planning, admission, and registration.</p>
+            <ul>
+                <li>
+                    <strong>Planning</strong>: Your intent to take a selection of courses, 
+                    planned ahead for the whole duration of your program and reviewed/approved by the program directors.
+                    This is what you can do here.
+                </li>
+                <li>
+                    <strong>Application/admission</strong>: Before each term, you need to apply to be admitted to the courses you wish
+                    to take during that term. The procedure is different for SU courses and KTH courses. For SU courses,
+                    the administration will do this for you from your course selection in this system. For KTH courses,
+                    this only happens for your first term. After that, you will have to apply by yourself through the national system antagning.se.
+                </li>
+                <li>
+                    <strong>Registration</strong>: Once admitted, you need to confirm that you will take the course during that term by
+                    registering. Again, the SU administration will do this for you based on the course choice you make here.
+                    For KTH courses (all terms, including the first), you do this yourself via Ladok.
+                </li>
+            </ul>
+            <p>
+                Sounds complicated? That's because it is. You can always review this information in the <a href="https://canvas.kth.se/courses/44628/pages/enrolling-and-registering-for-courses?module_item_id=922474">
+                program room</a> on canvas.
+            </p>
+            <button onclick="continueFromWelcome()">Continue</button>
+        </div>
+    `;
+}
+
+async function continueFromWelcome() {
+    justRegistered = false;
+    if (currentUser.role === 'student') {
+        const complete = await api('/auth/me/complete');
+        if (!complete.complete) {
+            renderProfileCompletion(complete.missing);
+            return;
+        }
+    }
+    courses = await api('/courses');
+    renderApp();
+}
 
 function logout() {
     clearToken();
