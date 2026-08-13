@@ -231,8 +231,8 @@ def change_password(
     return {"ok": True}
 
 
-@router.delete("/users/{user_id}")
-def close_account(
+@router.patch("/users/{user_id}/activate", response_model=UserOut)
+def activate_account(
     user_id: int,
     current_user: User = Depends(require_role("director")),
     db: Session = Depends(get_db),
@@ -241,10 +241,45 @@ def close_account(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user.role == "director":
-        raise HTTPException(status_code=400, detail="Cannot close director accounts")
+        raise HTTPException(status_code=400, detail="Cannot change director account status")
+    user.is_active = True
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/users/{user_id}/deactivate", response_model=UserOut)
+def deactivate_account(
+    user_id: int,
+    current_user: User = Depends(require_role("director")),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.role == "director":
+        raise HTTPException(status_code=400, detail="Cannot change director account status")
     user.is_active = False
     db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.delete("/users/{user_id}/delete")
+def hard_delete_account(
+    user_id: int,
+    current_user: User = Depends(require_role("director")),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.role == "director":
+        raise HTTPException(status_code=400, detail="Cannot delete director accounts")
+    db.delete(user)
+    db.commit()
     return {"ok": True}
+
 
 
 @router.patch("/users/{user_id}/director-flags", response_model=UserOut)

@@ -138,17 +138,23 @@ async function renderAccountAdminInline() {
     const container = document.getElementById('account-admin-container');
     if (!container) return;
     const users = await api('/auth/users');
-    const rows = users.map(u => `
-        <tr>
-            <td>${escapeHtml(formatUserName(u))}</td>
-            <td>${escapeHtml(u.email)}</td>
-            <td>${escapeHtml(u.role)}</td>
-            <td>${u.is_active ? 'Active' : 'Closed'}</td>
-            <td>
-                ${u.role === 'student' ? `<button class="danger" onclick="closeAccount(${u.id})">Close</button>` : ''}
-            </td>
-        </tr>
-    `).join('');
+    const rows = users.map(u => {
+        const status = u.is_active ? 'Active' : 'Inactive';
+        const toggleAction = u.is_active
+            ? `<button class="warning" onclick="deactivateAccount(${u.id})">Inactivate</button>`
+            : `<button class="success" onclick="activateAccount(${u.id})">Reactivate</button>`;
+        return `
+            <tr>
+                <td>${escapeHtml(formatUserName(u))}</td>
+                <td>${escapeHtml(u.email)}</td>
+                <td>${escapeHtml(u.role)}</td>
+                <td>${status}</td>
+                <td>
+                    ${u.role === 'student' ? `${toggleAction} <button class="danger" onclick="deleteAccount(${u.id})">Delete</button>` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
 
     container.innerHTML = `
         <h3>Create Account</h3>
@@ -171,6 +177,22 @@ async function renderAccountAdminInline() {
             <tbody>${rows || '<tr><td colspan="5">No accounts.</td></tr>'}</tbody>
         </table>
     `;
+}
+
+async function activateAccount(userId) {
+    await api(`/auth/users/${userId}/activate`, { method: 'PATCH' });
+    renderAccountAdminInline();
+}
+
+async function deactivateAccount(userId) {
+    await api(`/auth/users/${userId}/deactivate`, { method: 'PATCH' });
+    renderAccountAdminInline();
+}
+
+async function deleteAccount(userId) {
+    if (!confirm('WARNING: This will permanently erase the account from the database. This action cannot be undone, and the user will not be notified. This is only suitable for test accounts and erroneously created accounts. Continue?')) return;
+    await api(`/auth/users/${userId}/delete`, { method: 'DELETE' });
+    renderAccountAdminInline();
 }
 
 async function createUser() {
