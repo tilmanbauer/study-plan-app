@@ -305,3 +305,9 @@ def list_users(
 ):
     return db.query(User).all()
 
+@router.post("/refresh", response_model=TokenOut)
+def refresh(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user.is_active:
+        raise HTTPException(status_code=403, detail="Account is closed")
+    access_token = create_access_token({"sub": str(current_user.id)})
+    return {"access_token": access_token, "token_type": "bearer", "user": current_user}

@@ -175,11 +175,36 @@ def update_plan(
     if plan.student_id != current_user.id:
         raise HTTPException(status_code=404, detail="Plan not found")
 
-    new_version_number = plan.current_version + 1
-    version = StudyPlanVersion(plan_id=plan.id, version_number=new_version_number)
-    db.add(version)
-    db.commit()
-    db.refresh(version)
+    # Only bump version if the plan was returned by the director.
+    bump_version = plan.status in ("approved", "changes_requested")
+
+    if bump_version:
+        new_version_number = plan.current_version + 1
+        version = StudyPlanVersion(plan_id=plan.id, version_number=new_version_number)
+        db.add(version)
+        db.commit()
+        db.refresh(version)
+        plan.current_version = new_version_number
+    else:
+        # Overwrite the latest version.
+        version = (
+            db.query(StudyPlanVersion)
+            .filter(
+                StudyPlanVersion.plan_id == plan.id,
+                StudyPlanVersion.version_number == plan.current_version,
+            )
+            .first()
+        )
+        if not version:
+            # Fallback: create a new version if none exists.
+            version = StudyPlanVersion(plan_id=plan.id, version_number=1)
+            db.add(version)
+            db.commit()
+            db.refresh(version)
+            plan.current_version = 1
+
+        # Delete old items in this version.
+        db.query(StudyPlanItem).filter(StudyPlanItem.version_id == version.id).delete()
 
     for item in plan_update.items:
         db.add(StudyPlanItem(
@@ -191,7 +216,6 @@ def update_plan(
             credits=item.credits,
         ))
 
-    plan.current_version = new_version_number
     plan.title = plan_update.title
     plan.status = "draft"
     plan.updated_at = datetime.utcnow()

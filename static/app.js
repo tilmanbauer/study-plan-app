@@ -21,6 +21,11 @@ const STATUS_ORDER = {
     rejected: 3,
     draft: 4,
 };
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+let inactivityTimer = null;
+let refreshTimer = null;
+let autoSaveTimer = null;
 
 let currentUser = null;
 let courses = [];
@@ -30,6 +35,67 @@ let planSortKeys = [];
 let courseSortKeys = [];
 let cachedPlans = [];
 let cachedCourses = [];
+
+function scheduleAutoSave() {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+        autoSavePlan();
+    }, 3000);
+}
+
+async function autoSavePlan() {
+    if (!editingPlanId) return;
+    const admissionTerm = currentUser.admission_term;
+    if (!admissionTerm) return;
+
+    const { items, errors } = collectPlanItems(admissionTerm);
+    if (errors.length) return;
+
+    try {
+        await api(`/plans/${editingPlanId}/update`, {
+            method: 'POST',
+            body: { title: null, items },
+        });
+        const status = document.getElementById('autosave-status');
+        if (status) {
+            status.textContent = 'Draft saved';
+            setTimeout(() => status.textContent = '', 2000);
+        }
+    } catch (e) {
+        console.error('Auto-save failed:', e);
+    }
+}
+
+function resetInactivityTimer() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        logout();
+        alert('You have been logged out due to inactivity.');
+    }, INACTIVITY_TIMEOUT_MS);
+}
+
+function startSessionWatch() {
+    resetInactivityTimer();
+    ['click', 'keydown', 'mousemove', 'scroll'].forEach(event => {
+        document.addEventListener(event, resetInactivityTimer, { passive: true });
+    });
+    refreshTimer = setInterval(refreshToken, REFRESH_INTERVAL_MS);
+}
+
+async function refreshToken() {
+    if (!getToken()) return;
+    try {
+        const data = await api('/auth/refresh', { method: 'POST' });
+        setToken(data.access_token);
+    } catch (e) {
+        logout();
+    }
+}
+
+function stopSessionWatch() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    if (refreshTimer) clearInterval(refreshTimer);
+}
 
 function parseTerm(term) {
     if (!term) return { year: 0, semester: 0 };
@@ -771,12 +837,14 @@ function onCourseChange(select, term) {
 
     refreshAllDropdownsForTerm(term);
     updateTermCredits(term);
+    scheduleAutoSave();
 }
 
 function removeCourseRow(button, term) {
     button.closest('.course-row').remove();
     refreshAllDropdownsForTerm(term);
     updateTermCredits(term);
+    scheduleAutoSave();
 }
 
 function createCourseRowHtml(term, item = null) {
@@ -794,13 +862,14 @@ function createCourseRowHtml(term, item = null) {
             </div>
             <button class="secondary remove-btn" onclick="removeCourseRow(this, '${term}')" title="Remove course">✕</button>
             <div class="custom-fields" style="${customStyle}">
-                <input class="custom-code" placeholder="Custom code" value="${escapeHtml(item?.custom_code || '')}">
-                <input class="custom-title" placeholder="Custom title" value="${escapeHtml(item?.custom_title || '')}">
-                <input class="custom-credits" type="number" step="0.5" min="0" placeholder="Credits" value="${item?.credits ?? ''}" onchange="this.value = roundToHalf(this.value)" oninput="updateTermCredits('${term}')">
+                <input class="custom-code" placeholder="Custom code" value="${escapeHtml(item?.custom_code || '')}" oninput="scheduleAutoSave()">
+                <input class="custom-title" placeholder="Custom title" value="${escapeHtml(item?.custom_title || '')}" oninput="scheduleAutoSave()">
+                <input class="custom-credits" type="number" step="0.5" min="0" placeholder="Credits" value="${item?.credits ?? ''}" onchange="this.value = roundToHalf(this.value)" oninput="updateTermCredits('${term}'); scheduleAutoSave()">
             </div>
         </div>
     `;
 }
+
 
 function addCourseRow(term, item = null) {
     const container = document.getElementById(`items-${term.replace(' ', '-')}`);
@@ -859,6 +928,7 @@ function newPlan() {
             <div id="total-progress"></div>
             <div class="actions">
                 <button onclick="savePlan(false)">Save Draft</button>
+                <span id="autosave-status" style="margin-left:1rem;color:var(--muted)"></span>
             </div>
         </div>
     `;
@@ -866,6 +936,7 @@ function newPlan() {
         renderTermSections();
     }
 }
+
 
 let editingPlanId = null;
 
@@ -892,6 +963,7 @@ async function editPlan(planId) {
             <div class="actions">
                 <button onclick="savePlan(true)">Save Update as Draft</button>
                 <button class="secondary" onclick="renderApp()">Cancel</button>
+                <span id="autosave-status" style="margin-left:1rem;color:var(--muted)"></span>
             </div>
         </div>
     `;
@@ -909,6 +981,7 @@ async function editPlan(planId) {
         }
     });
 }
+
 
 function findDuplicateCourseCodes() {
     const usedCodes = {};
@@ -986,6 +1059,8 @@ function collectPlanItems(admissionTerm) {
 }
 
 async function savePlan(isUpdate) {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
     const admissionTerm = currentUser.admission_term;
 
     if (!admissionTerm) {
@@ -1014,6 +1089,7 @@ async function savePlan(isUpdate) {
     cachedPlans = [];
     renderApp();
 }
+
 
 function commentsHtml(comments) {
     return comments.map(c => `
