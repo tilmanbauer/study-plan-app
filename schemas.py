@@ -1,4 +1,4 @@
-from pydantic import BaseModel,validator
+from pydantic import BaseModel,validator,field_validator
 from typing import List, Optional
 from datetime import datetime
 
@@ -32,13 +32,15 @@ class CourseCreate(BaseModel):
     credits: float
     term: str
 
-    @validator("credits")
+    @field_validator("credits")
+    @classmethod
     def credits_half_integer(cls, v):
         if v < 0:
             raise ValueError("Credits cannot be negative")
-        if abs(v * 2 - round(v * 2)) > 1e-6:
+        rounded = round(v * 2) / 2
+        if abs(v - rounded) > 1e-6:
             raise ValueError("Credits must be a multiple of 0.5")
-        return round(v * 2) / 2
+        return rounded
 
 
 class CourseOut(BaseModel):
@@ -54,20 +56,23 @@ class CourseOut(BaseModel):
 
 
 class StudyPlanItemIn(BaseModel):
-    term: str
     course_id: Optional[int] = None
     custom_code: Optional[str] = None
     custom_title: Optional[str] = None
     credits: Optional[float] = None
+    term: str
 
-    @validator("credits")
+    @field_validator("credits")
+    @classmethod
     def credits_half_integer(cls, v):
+        if v is None:
+            return v
         if v < 0:
             raise ValueError("Credits cannot be negative")
-        if abs(v * 2 - round(v * 2)) > 1e-6:
+        rounded = round(v * 2) / 2
+        if abs(v - rounded) > 1e-6:
             raise ValueError("Credits must be a multiple of 0.5")
-        return round(v * 2) / 2
-
+        return rounded
 
 class StudyPlanItemOut(BaseModel):
     id: int

@@ -21,13 +21,7 @@ from typing import List
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.get("/diag/versions")
-def diag_versions():
-    return {
-        "pydantic_version": getattr(pydantic, "VERSION", "unknown"),
-        "fastapi_version": getattr(fastapi, "__version__", "unknown"),
-    }
-    
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
