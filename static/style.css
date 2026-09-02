@@ -560,3 +560,9 @@ input, select, textarea {
     color: var(--success);
     font-size: 0.85rem;
 }
+
+.sort-indicator {
+    font-size: 0.75em;
+    margin-left: 0.3rem;
+    color: var(--primary);
+}

@@ -14,10 +14,93 @@ const CREDIT_MIN = 27;
 const CREDIT_MAX = 33;
 const TOTAL_CREDITS = 120;
 
+const STATUS_ORDER = {
+    pending: 0,
+    changes_requested: 1,
+    approved: 2,
+    rejected: 3,
+    draft: 4,
+};
+
 let currentUser = null;
 let courses = [];
 let showRegister = false;
 let justRegistered = false;
+let planSortKeys = [];
+let courseSortKeys = [];
+
+function parseTerm(term) {
+    if (!term) return { year: 0, semester: 0 };
+    const parts = term.split(' ');
+    const year = parseInt(parts[1], 10) || 0;
+    const semester = parts[0] === 'Fall' ? 1 : 2;
+    return { year, semester };
+}
+
+function compareValues(a, b, key) {
+    if (key === 'student') {
+        const aName = formatUserName(a.student).toLowerCase();
+        const bName = formatUserName(b.student).toLowerCase();
+        return aName.localeCompare(bName);
+    }
+    if (key === 'admission') {
+        const aTerm = parseTerm(a.student.admission_term);
+        const bTerm = parseTerm(b.student.admission_term);
+        if (aTerm.year !== bTerm.year) return aTerm.year - bTerm.year;
+        return aTerm.semester - bTerm.semester;
+    }
+    if (key === 'status') {
+        const aOrder = STATUS_ORDER[a.status] ?? 99;
+        const bOrder = STATUS_ORDER[b.status] ?? 99;
+        return aOrder - bOrder;
+    }
+    if (key === 'updated') {
+        return new Date(b.updated_at) - new Date(a.updated_at);
+    }
+    if (key === 'university') {
+        return (a.university || '').localeCompare(b.university || '');
+    }
+    if (key === 'code') {
+        return (a.code || '').localeCompare(b.code || '');
+    }
+    if (key === 'title') {
+        return (a.title || '').localeCompare(b.title || '');
+    }
+    if (key === 'term') {
+        const aTerm = parseTerm(a.term);
+        const bTerm = parseTerm(b.term);
+        if (aTerm.year !== bTerm.year) return aTerm.year - bTerm.year;
+        return aTerm.semester - bTerm.semester;
+    }
+    return 0;
+}
+
+function sortByKeys(items, keys, compareFn) {
+    return [...items].sort((a, b) => {
+        for (const key of keys) {
+            const cmp = compareFn(a, b, key);
+            if (cmp !== 0) return cmp;
+        }
+        return 0;
+    });
+}
+
+function toggleSortKey(keys, key, maxKeys = 2) {
+    const idx = keys.indexOf(key);
+    if (idx !== -1) {
+        keys.splice(idx, 1);
+    }
+    keys.push(key);
+    if (keys.length > maxKeys) {
+        keys.shift();
+    }
+}
+
+function roundToHalf(value) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return 0;
+    return Math.round(num * 2) / 2;
+}
 
 function statusLabel(status) {
     return STATUS_LABELS[status] || status;
@@ -602,7 +685,7 @@ function calculateTermCreditsFromDom(term) {
         const courseValue = row.querySelector('.course-select').value;
         if (!courseValue) return;
         if (courseValue === 'custom') {
-            total += parseFloat(row.querySelector('.custom-credits').value) || 0;
+            total += roundToHalf(row.querySelector('.custom-credits').value);
         } else {
             const course = courses.find(c => c.id === parseInt(courseValue, 10));
             if (course) total += course.credits;
@@ -610,6 +693,7 @@ function calculateTermCreditsFromDom(term) {
     });
     return total;
 }
+
 
 function updateTermCredits(term) {
     const credits = calculateTermCreditsFromDom(term);
@@ -695,7 +779,7 @@ function createCourseRowHtml(term, item = null) {
             <div class="custom-fields" style="${customStyle}">
                 <input class="custom-code" placeholder="Custom code" value="${escapeHtml(item?.custom_code || '')}">
                 <input class="custom-title" placeholder="Custom title" value="${escapeHtml(item?.custom_title || '')}">
-                <input class="custom-credits" type="number" placeholder="Credits" value="${item?.credits ?? ''}" oninput="updateTermCredits('${term}')">
+                <input class="custom-credits" type="number" step="0.5" min="0" placeholder="Credits" value="${item?.credits ?? ''}" onchange="this.value = roundToHalf(this.value)" oninput="updateTermCredits('${term}')">
             </div>
         </div>
     `;
@@ -863,12 +947,12 @@ function collectPlanItems(admissionTerm) {
             const customCode = row.querySelector('.custom-code').value.trim();
             const customTitle = row.querySelector('.custom-title').value.trim();
             const customCreditsRaw = row.querySelector('.custom-credits').value;
-            const customCredits = customCreditsRaw ? parseFloat(customCreditsRaw) : null;
+            const customCredits = roundToHalf(customCreditsRaw);
 
             if (isCustom) {
                 if (!customCode) errors.push(`${term}: custom course code is missing`);
                 if (!customTitle) errors.push(`${term}: custom course title is missing`);
-                if (!customCredits || customCredits <= 0) errors.push(`${term}: custom course credits are missing or invalid`);
+                if (customCredits < 0) errors.push(`${term}: custom course credits cannot be negative`);
             }
 
             items.push({
@@ -1326,7 +1410,9 @@ async function requestChanges(planId) {
 async function renderDirector() {
     const plans = await api('/plans');
 
-    const planRows = plans.map(p => `
+    const sortedPlans = sortByKeys(plans, planSortKeys, compareValues);
+
+    const planRows = sortedPlans.map(p => `
         <tr>
             <td>${escapeHtml(formatUserName(p.student))}</td>
             <td>${p.student.admission_term || '-'}</td>
@@ -1336,6 +1422,11 @@ async function renderDirector() {
             <td><button onclick="viewPlan(${p.id})">Review</button></td>
         </tr>
     `).join('');
+
+    const sortIndicator = (key) => {
+        const idx = planSortKeys.indexOf(key);
+        return idx !== -1 ? `<span class="sort-indicator">${idx + 1}</span>` : '';
+    };
 
     const terms = new Set();
     plans.forEach(p => {
@@ -1358,7 +1449,14 @@ async function renderDirector() {
             <div id="tab-content-plans" class="tab-content active">
                 <table>
                     <thead>
-                        <tr><th>Student</th><th>Admission</th><th>Status</th><th>Version</th><th>Updated</th><th>Actions</th></tr>
+                        <tr>
+                            <th onclick="sortPlans('student')" style="cursor:pointer">Student ${sortIndicator('student')}</th>
+                            <th onclick="sortPlans('admission')" style="cursor:pointer">Admission ${sortIndicator('admission')}</th>
+                            <th onclick="sortPlans('status')" style="cursor:pointer">Status ${sortIndicator('status')}</th>
+                            <th>Version</th>
+                            <th onclick="sortPlans('updated')" style="cursor:pointer">Updated ${sortIndicator('updated')}</th>
+                            <th>Actions</th>
+                        </tr>
                     </thead>
                     <tbody>${planRows || '<tr><td colspan="6">No plans yet.</td></tr>'}</tbody>
                 </table>
@@ -1388,11 +1486,25 @@ async function renderDirector() {
     renderCourseAdminInline();
 }
 
+function sortPlans(key) {
+    toggleSortKey(planSortKeys, key);
+    renderDirector();
+}
+
+
 async function renderCourseAdminInline() {
     const container = document.getElementById('course-admin-container');
     if (!container) return;
     const allCourses = await api('/courses');
-    const rows = allCourses.map(c => `
+
+    const sortedCourses = sortByKeys(allCourses, courseSortKeys, compareValues);
+
+    const sortIndicator = (key) => {
+        const idx = courseSortKeys.indexOf(key);
+        return idx !== -1 ? `<span class="sort-indicator">${idx + 1}</span>` : '';
+    };
+
+    const rows = sortedCourses.map(c => `
         <tr>
             <td>${escapeHtml(c.university)}</td>
             <td>${escapeHtml(c.code)}</td>
@@ -1409,7 +1521,7 @@ async function renderCourseAdminInline() {
             <input id="course-university" type="text" placeholder="University">
             <input id="course-code" type="text" placeholder="Code">
             <input id="course-title" type="text" placeholder="Title">
-            <input id="course-credits" type="number" step="0.1" placeholder="Credits">
+            <input id="course-credits" type="number" step="0.5" min="0" placeholder="Credits" onchange="this.value = roundToHalf(this.value)">
             <input id="course-term" type="text" placeholder="Term">
             <button onclick="addCourse()">Add</button>
         </div>
@@ -1425,12 +1537,25 @@ async function renderCourseAdminInline() {
         <h3 style="margin-top:1.5rem">All Courses</h3>
         <table>
             <thead>
-                <tr><th>University</th><th>Code</th><th>Title</th><th>Credits</th><th>Term</th><th>Actions</th></tr>
+                <tr>
+                    <th onclick="sortCourses('university')" style="cursor:pointer">University ${sortIndicator('university')}</th>
+                    <th onclick="sortCourses('code')" style="cursor:pointer">Code ${sortIndicator('code')}</th>
+                    <th onclick="sortCourses('title')" style="cursor:pointer">Title ${sortIndicator('title')}</th>
+                    <th>Credits</th>
+                    <th onclick="sortCourses('term')" style="cursor:pointer">Term ${sortIndicator('term')}</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>${rows || '<tr><td colspan="6">No courses yet.</td></tr>'}</tbody>
         </table>
     `;
 }
+
+function sortCourses(key) {
+    toggleSortKey(courseSortKeys, key);
+    renderCourseAdminInline();
+}
+
 
 
 function switchTab(name) {
@@ -1481,7 +1606,7 @@ async function addCourse() {
     const university = document.getElementById('course-university').value.trim();
     const code = document.getElementById('course-code').value.trim();
     const title = document.getElementById('course-title').value.trim();
-    const credits = parseFloat(document.getElementById('course-credits').value);
+    const credits = roundToHalf(document.getElementById('course-credits').value);
     const term = document.getElementById('course-term').value.trim();
 
     if (!university || !code || !title || !credits || !term) {
