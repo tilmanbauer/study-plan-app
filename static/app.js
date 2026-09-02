@@ -90,11 +90,12 @@ function toggleSortKey(keys, key, maxKeys = 2) {
     if (idx !== -1) {
         keys.splice(idx, 1);
     }
-    keys.push(key);
+    keys.unshift(key);
     if (keys.length > maxKeys) {
-        keys.shift();
+        keys.pop();
     }
 }
+
 
 function roundToHalf(value) {
     const num = parseFloat(value);
@@ -121,6 +122,20 @@ function formatUserName(user) {
     if (user.first_name) return user.first_name;
     if (user.name) return user.name;
     return user.email || '';
+}
+
+function sortIndicator(keys, key) {
+    const idx = keys.indexOf(key);
+    if (idx === -1) return '<span class="sort-inactive">⇅</span>';
+    return idx === 0 ? '<span class="sort-primary">⇅ 1</span>' : '<span class="sort-secondary">⇅ 2</span>';
+}
+
+function sortablePlanHeader(key, label) {
+    return `<th class="sortable-header" onclick="sortPlans('${key}')" title="Click to sort by ${label}">${label} ${sortIndicator(planSortKeys, key)}</th>`;
+}
+
+function sortableCourseHeader(key, label) {
+    return `<th class="sortable-header" onclick="sortCourses('${key}')" title="Click to sort by ${label}">${label} ${sortIndicator(courseSortKeys, key)}</th>`;
 }
 
 function getToken() {
@@ -1407,6 +1422,7 @@ async function requestChanges(planId) {
     renderApp();
 }
 
+
 async function renderDirector() {
     const plans = await api('/plans');
 
@@ -1423,10 +1439,6 @@ async function renderDirector() {
         </tr>
     `).join('');
 
-    const sortIndicator = (key) => {
-        const idx = planSortKeys.indexOf(key);
-        return idx !== -1 ? `<span class="sort-indicator">${idx + 1}</span>` : '';
-    };
 
     const terms = new Set();
     plans.forEach(p => {
@@ -1449,15 +1461,16 @@ async function renderDirector() {
             <div id="tab-content-plans" class="tab-content active">
                 <table>
                     <thead>
-                        <tr>
-                            <th onclick="sortPlans('student')" style="cursor:pointer">Student ${sortIndicator('student')}</th>
-                            <th onclick="sortPlans('admission')" style="cursor:pointer">Admission ${sortIndicator('admission')}</th>
-                            <th onclick="sortPlans('status')" style="cursor:pointer">Status ${sortIndicator('status')}</th>
-                            <th>Version</th>
-                            <th onclick="sortPlans('updated')" style="cursor:pointer">Updated ${sortIndicator('updated')}</th>
-                            <th>Actions</th>
-                        </tr>
+                       <tr>
+                          ${sortablePlanHeader('student', 'Student')}
+                           ${sortablePlanHeader('admission', 'Admission')}
+                          ${sortablePlanHeader('status', 'Status')}
+                           <th>Version</th>
+                          ${sortablePlanHeader('updated', 'Updated')}
+                           <th>Actions</th>
+                       </tr>
                     </thead>
+
                     <tbody>${planRows || '<tr><td colspan="6">No plans yet.</td></tr>'}</tbody>
                 </table>
             </div>
@@ -1499,11 +1512,6 @@ async function renderCourseAdminInline() {
 
     const sortedCourses = sortByKeys(allCourses, courseSortKeys, compareValues);
 
-    const sortIndicator = (key) => {
-        const idx = courseSortKeys.indexOf(key);
-        return idx !== -1 ? `<span class="sort-indicator">${idx + 1}</span>` : '';
-    };
-
     const rows = sortedCourses.map(c => `
         <tr>
             <td>${escapeHtml(c.university)}</td>
@@ -1538,14 +1546,15 @@ async function renderCourseAdminInline() {
         <table>
             <thead>
                 <tr>
-                    <th onclick="sortCourses('university')" style="cursor:pointer">University ${sortIndicator('university')}</th>
-                    <th onclick="sortCourses('code')" style="cursor:pointer">Code ${sortIndicator('code')}</th>
-                    <th onclick="sortCourses('title')" style="cursor:pointer">Title ${sortIndicator('title')}</th>
+                    ${sortableCourseHeader('university', 'University')}
+                    ${sortableCourseHeader('code', 'Code')}
+                    ${sortableCourseHeader('title', 'Title')}
                     <th>Credits</th>
-                    <th onclick="sortCourses('term')" style="cursor:pointer">Term ${sortIndicator('term')}</th>
+                    ${sortableCourseHeader('term', 'Term')}
                     <th>Actions</th>
                 </tr>
             </thead>
+
             <tbody>${rows || '<tr><td colspan="6">No courses yet.</td></tr>'}</tbody>
         </table>
     `;

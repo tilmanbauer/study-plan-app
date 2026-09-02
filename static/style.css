@@ -566,3 +566,31 @@ input, select, textarea {
     margin-left: 0.3rem;
     color: var(--primary);
 }
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.sortable-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sort-primary {
+    color: var(--primary);
+    font-weight: bold;
+    margin-left: 0.3rem;
+}
+
+.sort-secondary {
+    color: var(--muted);
+    font-size: 0.85em;
+    margin-left: 0.3rem;
+}
+
+.sort-inactive {
+    color: #ccc;
+    margin-left: 0.3rem;
+    opacity: 0.5;
+}
