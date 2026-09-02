@@ -28,6 +28,8 @@ let showRegister = false;
 let justRegistered = false;
 let planSortKeys = [];
 let courseSortKeys = [];
+let cachedPlans = [];
+let cachedCourses = [];
 
 function parseTerm(term) {
     if (!term) return { year: 0, semester: 0 };
@@ -1009,6 +1011,7 @@ async function savePlan(isUpdate) {
             body: { title: null, items },
         });
     }
+    cachedPlans = [];
     renderApp();
 }
 
@@ -1229,6 +1232,7 @@ async function renderStudent() {
 
 async function submitPlan(planId) {
     await api(`/plans/${planId}/submit`, { method: 'POST' });
+    cachedPlans = [];
     renderApp();
 }
 
@@ -1409,6 +1413,7 @@ async function decide(planId, decision) {
         method: 'POST',
         body: { decision, comment: comment || null },
     });
+    cachedPlans = [];
     renderApp();
 }
 
@@ -1419,12 +1424,16 @@ async function requestChanges(planId) {
         method: 'POST',
         body: { decision: 'rejected', comment: comment || null },
     });
+    cachedPlans = [];
     renderApp();
 }
 
 
 async function renderDirector() {
-    const plans = await api('/plans');
+    if (!cachedPlans.length) {
+        cachedPlans = await api('/plans');
+    }
+    const plans = cachedPlans;
 
     const sortedPlans = sortByKeys(plans, planSortKeys, compareValues);
 
@@ -1508,7 +1517,10 @@ function sortPlans(key) {
 async function renderCourseAdminInline() {
     const container = document.getElementById('course-admin-container');
     if (!container) return;
-    const allCourses = await api('/courses');
+    if (!cachedCourses.length) {
+        cachedCourses = await api('/courses');
+    }
+    const allCourses = cachedCourses;
 
     const sortedCourses = sortByKeys(allCourses, courseSortKeys, compareValues);
 
@@ -1623,6 +1635,7 @@ async function addCourse() {
         return;
     }
 
+    cachedCourses = [];
     await api('/admin/courses', {
         method: 'POST',
         body: { university, code, title, credits, term },
@@ -1632,6 +1645,7 @@ async function addCourse() {
 
 async function deleteCourse(courseId) {
     if (!confirm('Delete this course?')) return;
+    cachedCourses = [];
     await api(`/admin/courses/${courseId}`, { method: 'DELETE' });
     renderCourseAdminInline();
 }
@@ -1658,6 +1672,7 @@ async function importCourseCsv() {
         return;
     }
     alert('Import successful');
+    cachedCourses = [];
     courses = await api('/courses');
     await renderCourseAdminInline();
 }
